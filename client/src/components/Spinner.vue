@@ -1,15 +1,3 @@
-<script lang="ts">
-import {defineComponent} from 'vue'
-
-export default defineComponent({
-name: "Spinner.vue"
-})
-</script>
-
 <template>
-  $END$
+  <progress class="progress is-small is-primary" max="100">Загрузка…</progress>
 </template>
-
-<style scoped>
-
-</style>

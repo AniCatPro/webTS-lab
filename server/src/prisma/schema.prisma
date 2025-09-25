@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  role         Role           @default(USER)
+  revisions    TextRevision[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model File {
+  id        String        @id @default(cuid())
+  name      String
+  kind      FileKind
+  mimeType  String?
+  type      FileType?
+  parentId  String?
+  parent    File?         @relation("Children", fields: [parentId], references: [id])
+  children  File[]        @relation("Children")
+  size      Int?
+  url       String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  revisions TextRevision[]
+}
+
+enum FileKind {
+  file
+  folder
+}
+
+enum FileType {
+  image
+  video
+  audio
+  document
+  other
+}
+
+model TextRevision {
+  id        String   @id @default(cuid())
+  file      File     @relation(fields: [fileId], references: [id])
+  fileId    String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,14 @@
+{
+  "files": [
+    { "id": "root", "name": "Корень", "kind": "folder", "parentId": null, "updatedAt": "2025-01-01T00:00:00Z" },
+    { "id": "img1", "name": "photo.png", "kind": "file", "mimeType": "image/png", "type": "image", "parentId": "root", "url": "/static/photo.png", "updatedAt": "2025-01-10T00:00:00Z" },
+    { "id": "doc1", "name": "notes.txt", "kind": "file", "mimeType": "text/plain", "type": "document", "parentId": "root", "updatedAt": "2025-01-11T00:00:00Z" },
+    { "id": "pdf1", "name": "spec.pdf", "kind": "file", "mimeType": "application/pdf", "type": "document", "parentId": "root", "url": "/static/spec.pdf", "updatedAt": "2025-01-12T00:00:00Z" },
+    { "id": "foldA", "name": "Папка A", "kind": "folder", "parentId": "root", "updatedAt": "2025-01-05T00:00:00Z" },
+    { "id": "txtA", "name": "readme.md", "kind": "file", "mimeType": "text/plain", "type": "document", "parentId": "foldA", "updatedAt": "2025-01-15T00:00:00Z" }
+  ],
+  "texts": [
+    { "fileId": "doc1", "content": "Пример текстового файла" },
+    { "fileId": "txtA", "content": "# Заголовок\nТекст..." }
+  ]
+}
