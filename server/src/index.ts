@@ -11,13 +11,36 @@ import { swaggerUi, swaggerSpec } from './swagger.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
-app.use(express.json({ limit: '2mb' }));
+// список origins из .env, можно через запятую
+const rawOrigins = (process.env.CLIENT_ORIGIN || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+const allowLocalhost = [
+    /^http:\/\/localhost(?::\d+)?$/,
+    /^http:\/\/127\.0\.0\.1(?::\d+)?$/,
+];
+
+// CORS middleware
+app.use(cors({
+    origin(origin, cb) {
+        // запросы без Origin (например, curl) — разрешаем
+        if (!origin) return cb(null, true);
+
+        if (rawOrigins.includes(origin)) return cb(null, true);
+        if (allowLocalhost.some(re => re.test(origin))) return cb(null, true);
+
+        return cb(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+}));
+
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
-// статические файлы для примеров (pdf/png), опционально
+// (опционально) публичная статика — можно оставить для удобства
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/static', express.static(path.join(__dirname, '..', 'static')));

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { authGuard } from '../middleware/authGuard.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mime from 'mime-types';
+import send from 'send';
 
 // -------------------------------------------------
 // Helpers
@@ -15,19 +17,14 @@ const STATIC_DIR = path.join(__dirname, '..', '..', 'static');
 const UPLOADS_DIR = path.join(STATIC_DIR, 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-/** Нормализация text-подобных mime */
 function isTextLike(mimeType?: string | null) {
     const mt = (mimeType || '').toLowerCase();
-    return (
-        mt.startsWith('text/') ||
-        mt === 'application/json' ||
-        mt === 'text/markdown'
-    );
+    return mt.startsWith('text/') || mt === 'application/json' || mt === 'text/markdown';
 }
 
-/** Классификация вида файла для поля File.type */
-function toFileType(mimeType?: string | null):
-    | 'image' | 'video' | 'audio' | 'document' | 'other' | undefined {
+function toFileType(
+    mimeType?: string | null
+): 'image' | 'video' | 'audio' | 'document' | 'other' | undefined {
     if (!mimeType) return undefined;
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
@@ -38,25 +35,24 @@ function toFileType(mimeType?: string | null):
         mimeType.includes('markdown') ||
         mimeType.includes('msword') ||
         mimeType.includes('spreadsheet')
-    ) return 'document';
+    )
+        return 'document';
     return 'other';
 }
 
-/** Нормализация parentId из query (?parentId=, null, undefined) */
 function normalizeParentId(raw: unknown): string | null | undefined {
-    if (raw === undefined) return undefined;               // не фильтруем (корень)
+    if (raw === undefined) return undefined; // корень
     const s = String(raw);
-    if (s === '' || s === 'null' || s === 'undefined') return null;
+    if (s === '' || s === 'null' || s === 'undefined') return null; // явно корневые
     return s;
 }
 
-// Multer storage в /static/uploads
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
     filename: (_req, file, cb) => {
         const safe = (file.originalname || 'file').replace(/[^\w.\-]+/g, '_');
         cb(null, `${Date.now()}_${safe}`);
-    }
+    },
 });
 const upload = multer({ storage });
 
@@ -65,9 +61,12 @@ const upload = multer({ storage });
 // -------------------------------------------------
 export const filesRouter = Router();
 
+// закрываем весь роутер авторизацией
+filesRouter.use(authGuard);
+
 /**
  * GET /api/files
- * Список с фильтрами: parentId, q (по имени), type, страница
+ * Список/поиск
  */
 filesRouter.get('/', async (req, res) => {
     const parentId = normalizeParentId(req.query.parentId);
@@ -96,7 +95,7 @@ filesRouter.get('/', async (req, res) => {
 
 /**
  * GET /api/files/:id
- * Получить метаданные файла/папки
+ * Метаданные файла/папки
  */
 filesRouter.get('/:id', async (req, res) => {
     const file = await prisma.file.findUnique({ where: { id: req.params.id } });
@@ -106,7 +105,7 @@ filesRouter.get('/:id', async (req, res) => {
 
 /**
  * GET /api/files/:id/text
- * Вернуть актуальный текст для текстового файла
+ * Получить содержимое текстового файла
  */
 filesRouter.get('/:id/text', async (req, res) => {
     const f = await prisma.file.findUnique({ where: { id: req.params.id } });
@@ -124,7 +123,6 @@ filesRouter.get('/:id/text', async (req, res) => {
 /**
  * POST /api/files/:id/text
  * Сохранить новую версию текста
- * body: { content: string }
  */
 filesRouter.post('/:id/text', async (req, res) => {
     const f = await prisma.file.findUnique({ where: { id: req.params.id } });
@@ -138,13 +136,41 @@ filesRouter.post('/:id/text', async (req, res) => {
         return res.status(400).json({ message: 'Invalid content' });
     }
 
-    // здесь можно брать автора из req.user, если включишь authGuard
+    // TODO: можно брать автора из req.user.sub
     const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
     await prisma.textRevision.create({
         data: { fileId: f.id, content, authorId: admin!.id },
     });
 
     res.json({ ok: true });
+});
+
+/**
+ * GET /api/files/:id/content
+ * Защищённая выдача бинарного содержимого (blob)
+ */
+filesRouter.get('/:id/content', async (req, res) => {
+    const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+    if (!f) return res.status(404).json({ message: 'Not found' });
+    if (f.kind !== 'file' || !f.url) return res.status(400).json({ message: 'No content' });
+
+    const idx = f.url.indexOf('/static/');
+    if (idx === -1) return res.status(400).json({ message: 'External content not allowed' });
+
+    const relEncoded = f.url.slice(idx + '/static/'.length); // e.g. seed/Nextcloud%20intro.mp4
+    const rel = decodeURIComponent(relEncoded);              // -> seed/Nextcloud intro.mp4
+    const abs = path.join(STATIC_DIR, rel);
+    if (!fs.existsSync(abs)) return res.status(404).json({ message: 'File not found' });
+
+    // тип ставим заранее
+    if (f.mimeType) res.type(f.mimeType);
+
+    send(req, abs)
+        .on('error', (err) => {
+            console.error('send error', err);
+            if (!res.headersSent) res.status(500).end();
+        })
+        .pipe(res);
 });
 
 /**
@@ -162,16 +188,15 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
         }
     }
 
-    const absPath = req.file.path; // .../static/uploads/123_name.ext
-    const rel = path.relative(STATIC_DIR, absPath).split(path.sep).join('/'); // uploads/123_name.ext
+    const absPath = req.file.path;
+    const rel = path.relative(STATIC_DIR, absPath).split(path.sep).join('/');
     const url = `http://localhost:${process.env.PORT || 4000}/static/${rel}`;
 
-    // mime из Multer или по расширению; нормализация популярных
     const ext = path.extname(req.file.originalname || '').toLowerCase();
     let mimeType = req.file.mimetype || (mime.lookup(req.file.originalname) || '').toString();
     if (ext === '.mp4') mimeType = 'video/mp4';
     if (ext === '.mp3') mimeType = 'audio/mpeg';
-    if (ext === '.md')  mimeType = 'text/markdown';
+    if (ext === '.md') mimeType = 'text/markdown';
     if (ext === '.txt') mimeType = 'text/plain';
 
     const created = await prisma.file.create({
@@ -191,8 +216,6 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
 /**
  * DELETE /api/files/:id
- * Удаление файла/папки (папка — только если пуста).
- * Если файл хранится в /static/uploads — удаляем и с диска.
  */
 filesRouter.delete('/:id', async (req, res) => {
     const f = await prisma.file.findUnique({
@@ -206,7 +229,7 @@ filesRouter.delete('/:id', async (req, res) => {
     }
 
     if (f.kind === 'file' && f.url && f.url.includes('/static/uploads/')) {
-        const urlPath = f.url.split('/static/')[1]; // uploads/xxx
+        const urlPath = f.url.split('/static/')[1];
         const abs = path.join(STATIC_DIR, urlPath);
         try {
             if (fs.existsSync(abs)) fs.unlinkSync(abs);

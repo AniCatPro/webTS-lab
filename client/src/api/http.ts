@@ -1,11 +1,9 @@
 import axios from 'axios';
 
-
 export const http = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
-    withCredentials: true, // чтобы cookie с JWT отправлялась автоматически
+    baseURL: import.meta.env.VITE_API_URL,
+    withCredentials: true, // отправляем cookie с JWT ко всем запросам к API
 });
-
 
 http.interceptors.response.use(
     r => r,
