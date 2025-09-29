@@ -10,6 +10,10 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+function toEncodedUrl(rel: string) {
+    return rel.split(path.sep).join('/').split('/').map(encodeURIComponent).join('/');
+}
+
 async function main() {
     // админ
     const adminPass = await bcrypt.hash('admin123', 10);
@@ -58,12 +62,14 @@ async function main() {
 
             const stat = fs.statSync(filePath);
 
+            const decodedName = Buffer.from(file, 'latin1').toString('utf8');
+
             entries.push({
-                name: file,
+                name: decodedName,
                 kind: 'file',
                 mimeType,
                 type,
-                url: `${baseUrl}/${encodeURIComponent(file)}`,
+                url: `${baseUrl}/${toEncodedUrl(file)}`,
                 size: stat.size,
             });
         }

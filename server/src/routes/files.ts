@@ -181,6 +181,11 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No file' });
 
     const parentId = normalizeParentId(req.body?.parentId);
+
+  // Normalize original filename: browsers send UTF-8, but Multer may expose it as latin1.
+  const rawOriginal = req.file.originalname || 'file';
+  const originalName = Buffer.from(rawOriginal, 'latin1').toString('utf8');
+
     if (parentId) {
         const parent = await prisma.file.findUnique({ where: { id: parentId } });
         if (!parent || parent.kind !== 'folder') {
@@ -190,10 +195,12 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
     const absPath = req.file.path;
     const rel = path.relative(STATIC_DIR, absPath).split(path.sep).join('/');
-    const url = `http://localhost:${process.env.PORT || 4000}/static/${rel}`;
+    const encodedRel = rel.split('/').map(encodeURIComponent).join('/');
+    const base = `http://localhost:${process.env.PORT || 4000}`;
+    const url = `${base}/static/${encodedRel}`;
 
-    const ext = path.extname(req.file.originalname || '').toLowerCase();
-    let mimeType = req.file.mimetype || (mime.lookup(req.file.originalname) || '').toString();
+    const ext = path.extname(originalName || '').toLowerCase();
+    let mimeType = req.file.mimetype || (mime.lookup(originalName) || '').toString();
     if (ext === '.mp4') mimeType = 'video/mp4';
     if (ext === '.mp3') mimeType = 'audio/mpeg';
     if (ext === '.md') mimeType = 'text/markdown';
@@ -201,7 +208,7 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
     const created = await prisma.file.create({
         data: {
-            name: req.file.originalname || req.file.filename,
+            name: originalName || req.file.filename,
             kind: 'file',
             mimeType,
             type: toFileType(mimeType) as any,
