@@ -34,12 +34,14 @@
     </nav>
 
     <router-view />
+    <UploadToasts />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useAuth } from '@/stores/auth';
+import UploadToasts from '@/components/UploadToasts.vue';
 
 const burger = ref(false);
 const auth = useAuth();

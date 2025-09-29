@@ -3,7 +3,7 @@
     <div class="level-left">
       <div class="file is-link">
         <label class="file-label">
-          <input class="file-input" type="file" @change="onPick" />
+          <input class="file-input" type="file" multiple @change="onPick" />
           <span class="file-cta">
             <span class="file-label">Загрузить файл</span>
           </span>
@@ -117,7 +117,7 @@
   <!-- Модал перемещения -->
   <MoveDialog
       v-if="moveOpen"
-      :current-parent-id="parentId ?? null"
+      :current-parent-id="parentId.value ?? null"
       @close="moveOpen=false"
       @confirm="doMove"
   />
@@ -153,12 +153,17 @@ import type { FsEntry } from '@/types';
 import FileCard from './FileCard.vue';
 import FileViewerWidget from '@/components/widgets/FileViewerWidget.vue';
 import MoveDialog from '@/components/MoveDialog.vue';
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { FilesApi } from '@/api/files';
 import { useFiles } from '@/stores/files';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import CreateFolderDialog from '@/components/CreateFolderDialog.vue';
+import { useTransfers } from '@/stores/transfers';
+
+// Глобальные обработчики DnD, чтобы браузер не открывал файл при дропе
+const onWinDragOver = (e: DragEvent) => { e.preventDefault(); };
+const onWinDrop = (e: DragEvent) => { e.preventDefault(); };
 
 const props = defineProps<{ items: FsEntry[] }>();
 const activeFile = ref<FsEntry|null>(null);
@@ -166,9 +171,12 @@ const activeFile = ref<FsEntry|null>(null);
 const route = useRoute();
 const router = useRouter();
 const store = useFiles();
-const parentId = (route.name === 'folder') ? String(route.params.id) : undefined;
+const transfers = useTransfers();
+const parentId = computed<string | null>(() => (route.name === 'folder' ? String(route.params.id) : null));
 
 const viewMode = ref<'grid'|'list'>('grid');
+onMounted(refresh);
+watch(() => route.fullPath, refresh);
 
 // Drag & Drop state and handlers
 const dragging = ref<FsEntry | null>(null);
@@ -230,7 +238,15 @@ async function onFolderDrop(folder: FsEntry, e: DragEvent) {
   if (droppedFiles.length) {
     try {
       for (const f of droppedFiles) {
-        await FilesApi.upload(f, folder.id);
+        const id = transfers.start(f.name, f.size);
+        await FilesApi.upload(f, folder.id, (ev: ProgressEvent) => {
+          const total = (ev.total ?? f.size);
+          transfers.update(id, ev.loaded ?? 0, total);
+        }).catch((err: any) => {
+          transfers.fail(id, err?.response?.data?.message || err.message);
+          throw err;
+        });
+        transfers.finish(id);
       }
       await refresh();
     } catch (err: any) {
@@ -252,7 +268,15 @@ async function onDesktopDrop(e: DragEvent) {
   if (!droppedFiles.length) return;
   try {
     for (const f of droppedFiles) {
-      await FilesApi.upload(f, parentId ?? null);
+      const id = transfers.start(f.name, f.size);
+      await FilesApi.upload(f, parentId.value ?? null, (ev: ProgressEvent) => {
+        const total = (ev.total ?? f.size);
+        transfers.update(id, ev.loaded ?? 0, total);
+      }).catch((err: any) => {
+        transfers.fail(id, err?.response?.data?.message || err.message);
+        throw err;
+      });
+      transfers.finish(id);
     }
     await refresh();
   } catch (err: any) {
@@ -271,8 +295,16 @@ function openContextMenu(e: MouseEvent, it: FsEntry) {
 
 function hideContextMenu() { ctx.value.visible = false; }
 function onWindowClick() { hideContextMenu(); }
-onMounted(() => window.addEventListener('click', onWindowClick));
-onBeforeUnmount(() => window.removeEventListener('click', onWindowClick));
+onMounted(() => {
+  window.addEventListener('click', onWindowClick);
+  window.addEventListener('dragover', onWinDragOver);
+  window.addEventListener('drop', onWinDrop);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('click', onWindowClick);
+  window.removeEventListener('dragover', onWinDragOver);
+  window.removeEventListener('drop', onWinDrop);
+});
 
 function onOpen(it: FsEntry) {
   if (it.kind === 'file') activeFile.value = it;
@@ -285,17 +317,31 @@ function onDblClick(it: FsEntry) {
   }
 }
 async function onSaved() { await refresh(); }
-async function refresh() { await store.loadList({ parentId }); }
+async function refresh() { await store.loadList({ parentId: parentId.value ?? null }); }
 
 async function onPick(e: Event) {
   const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
+  const fileList = input.files;
+  if (!fileList || fileList.length === 0) return;
+
   try {
-    await FilesApi.upload(file, parentId ?? null);
+    // загружаем последовательно, чтобы прогресс был корректный для каждого
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const id = transfers.start(file.name, file.size);
+      await FilesApi.upload(file, parentId.value ?? null, (ev: ProgressEvent) => {
+        const total = (ev.total ?? file.size);
+        transfers.update(id, ev.loaded ?? 0, total);
+      }).catch((err: any) => {
+        transfers.fail(id, err?.response?.data?.message || err.message);
+        throw err;
+      });
+      transfers.finish(id);
+    }
     await refresh();
   } catch (err: any) {
-    alert(err?.response?.data?.message || err.message);
+    const msg = err?.response?.data?.message || err.message;
+    alert(msg);
   } finally {
     input.value = '';
   }
@@ -306,7 +352,7 @@ function onCreateFolder() {
 }
 async function doCreateFolder(name: string) {
   try {
-    await FilesApi.createFolder(name, parentId ?? null);
+    await FilesApi.createFolder(name, parentId.value ?? null);
     await refresh();
   } catch (err: any) {
     alert(err?.response?.data?.message || err.message);

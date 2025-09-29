@@ -11,12 +11,13 @@ export const FilesApi = {
     saveText: (id: string, content: string) =>
         http.post(`/files/${id}/text`, { content }).then(r => r.data),
 
-    upload: (file: File, parentId?: string | null) => {
+    upload: (file: File, parentId?: string | null, onProgress?: (e: ProgressEvent) => void) => {
         const form = new FormData();
         form.append('file', file);
         if (parentId !== undefined) form.append('parentId', parentId ?? '');
         return http.post('/files/upload', form, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: onProgress,
         }).then(r => r.data);
     },
 
