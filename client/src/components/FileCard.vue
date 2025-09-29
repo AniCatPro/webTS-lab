@@ -16,18 +16,16 @@
         Открыть
       </router-link>
 
-      <button
-          v-else
-          class="button is-small is-link"
-          @click="$emit('open', item)"
-      >
+      <button v-else class="button is-small is-link" @click="$emit('open', item)">
         Просмотреть
       </button>
 
-      <button
-          class="button is-small is-light has-text-danger"
-          @click="$emit('delete')"
-      >
+      <!-- НОВОЕ: переместить -->
+      <button class="button is-small is-warning is-light" @click="$emit('move', item)">
+        Переместить…
+      </button>
+
+      <button class="button is-small is-light has-text-danger" @click="$emit('delete')">
         Удалить
       </button>
     </div>
@@ -37,7 +35,11 @@
 <script setup lang="ts">
 import type { FsEntry } from '@/types';
 defineProps<{ item: FsEntry }>();
-defineEmits<{ (e:'open', item: FsEntry): void; (e:'delete'): void }>();
+defineEmits<{
+  (e:'open', item: FsEntry): void;
+  (e:'delete'): void;
+  (e:'move', item: FsEntry): void;   // ← добавили
+}>();
 </script>
 
 <style scoped>
@@ -45,5 +47,5 @@ defineEmits<{ (e:'open', item: FsEntry): void; (e:'delete'): void }>();
 .fm-top { min-height: 44px; }
 .fm-name { font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fm-meta { font-size: .85rem; color: #7a7a7a; margin-top: .25rem; }
-.fm-actions { display: flex; gap: .5rem; }
+.fm-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 </style>

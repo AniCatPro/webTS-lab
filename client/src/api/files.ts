@@ -22,6 +22,12 @@ export const FilesApi = {
 
     remove: (id: string) => http.delete(`/files/${id}`).then(r => r.data),
 
+    createFolder: (name: string, parentId?: string | null) =>
+        http.post('/files/folder', { name, parentId }).then(r => r.data),
+
+    move: (id: string, parentId?: string | null) =>
+        http.put(`/files/${id}/move`, { parentId }).then(r => r.data),
+
     // защищённая выдача бинарника → получаем blob
     getContentBlob: (id: string) =>
         http.get(`/files/${id}/content`, { responseType: 'blob' }).then(r => r.data),

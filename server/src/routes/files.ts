@@ -215,6 +215,69 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 /**
+ * POST /api/files/folder
+ * Создать папку
+ * body: { name: string, parentId?: string|null }
+ */
+filesRouter.post('/folder', async (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  if (!name) return res.status(400).json({ message: 'Name is required' });
+
+  const parentId = normalizeParentId(req.body?.parentId);
+  if (parentId) {
+    const parent = await prisma.file.findUnique({ where: { id: parentId } });
+    if (!parent || parent.kind !== 'folder') {
+      return res.status(400).json({ message: 'Invalid parentId' });
+    }
+  }
+
+  const folder = await prisma.file.create({
+    data: {
+      name,
+      kind: 'folder',
+      type: undefined,
+      mimeType: null,
+      parentId: parentId ?? null,
+      url: null,
+      size: null,
+    },
+  });
+
+  res.status(201).json(folder);
+});
+
+/**
+ * PUT /api/files/:id/move
+ * Переместить файл/папку в другую папку (или в корень)
+ * body: { parentId?: string|null }
+ */
+filesRouter.put('/:id/move', async (req, res) => {
+  const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+  if (!f) return res.status(404).json({ message: 'Not found' });
+
+  const parentId = normalizeParentId(req.body?.parentId);
+  if (parentId) {
+    const parent = await prisma.file.findUnique({ where: { id: parentId } });
+    if (!parent || parent.kind !== 'folder') {
+      return res.status(400).json({ message: 'Invalid parentId' });
+    }
+
+    // нельзя переместить папку внутрь самой себя (и, по-хорошему, внутрь своих потомков —
+    // этот кейс можно обработать отдельно при желании)
+    if (f.id === parentId) {
+      return res.status(400).json({ message: 'Cannot move into itself' });
+    }
+  }
+
+  const updated = await prisma.file.update({
+    where: { id: f.id },
+    data: { parentId: parentId ?? null },
+  });
+
+  res.json(updated);
+});
+
+/**
  * DELETE /api/files/:id
  */
 filesRouter.delete('/:id', async (req, res) => {

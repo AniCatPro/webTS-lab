@@ -9,6 +9,7 @@
           </span>
         </label>
       </div>
+      <button class="button is-primary ml-2" @click="onCreateFolder">Новая папка</button>
     </div>
   </div>
 
@@ -18,7 +19,7 @@
         :key="it.id"
         class="column is-12-mobile is-6-tablet is-4-desktop is-3-widescreen"
     >
-      <FileCard :item="it" @open="onOpen" @delete="onDelete(it)" />
+      <FileCard :item="it" @open="onOpen" @delete="onDelete" @move="onMove" />
     </div>
   </div>
 
@@ -71,15 +72,35 @@ async function onPick(e: Event) {
   }
 }
 
-function onDelete(it: FsEntry) {
-  return async () => {
-    if (!confirm(`Удалить ${it.kind === 'folder' ? 'папку' : 'файл'} "${it.name}"?`)) return;
-    try {
-      await FilesApi.remove(it.id);
-      await refresh();
-    } catch (err: any) {
-      alert(err?.response?.data?.message || err.message);
-    }
-  };
+async function onDelete(it: FsEntry) {
+  if (!confirm(`Удалить ${it.kind === 'folder' ? 'папку' : 'файл'} "${it.name}"?`)) return;
+  try {
+    await FilesApi.remove(it.id);
+    await refresh();
+  } catch (err: any) {
+    alert(err?.response?.data?.message || err.message);
+  }
+}
+
+async function onCreateFolder() {
+  const name = prompt('Название новой папки:');
+  if (!name) return;
+  try {
+    await FilesApi.createFolder(name, parentId ?? null);
+    await refresh();
+  } catch (err: any) {
+    alert(err?.response?.data?.message || err.message);
+  }
+}
+
+async function onMove(it: FsEntry) {
+  const target = prompt('ID папки-приёмника (или пусто для корня):');
+  const parent = target && target.trim() !== '' ? target.trim() : null;
+  try {
+    await FilesApi.move(it.id, parent);
+    await refresh();
+  } catch (err: any) {
+    alert(err?.response?.data?.message || err.message);
+  }
 }
 </script>
