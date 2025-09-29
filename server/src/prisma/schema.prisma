@@ -58,3 +58,4 @@ model TextRevision {
   content   String
   createdAt DateTime @default(now())
 }
+@@unique([parentId, name, kind], map: "uniq_parent_name_kind")

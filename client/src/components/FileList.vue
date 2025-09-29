@@ -122,6 +122,24 @@
       @confirm="doMove"
   />
 
+  <!-- Модал: создать папку -->
+  <CreateFolderDialog
+    v-if="showCreateFolder"
+    @close="showCreateFolder=false"
+    @confirm="doCreateFolder"
+  />
+
+  <!-- Модал: подтверждение удаления -->
+  <ConfirmDialog
+    v-if="showDelete"
+    title="Подтвердите удаление"
+    :message="deleteTarget ? `Удалить ${deleteTarget.kind === 'folder' ? 'папку' : 'файл'} «${deleteTarget.name}»?` : ''"
+    confirmText="Удалить"
+    cancelText="Отмена"
+    @close="showDelete=false"
+    @confirm="doDelete"
+  />
+
   <FileViewerWidget
       v-if="activeFile"
       :file="activeFile"
@@ -139,6 +157,8 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { FilesApi } from '@/api/files';
 import { useFiles } from '@/stores/files';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import CreateFolderDialog from '@/components/CreateFolderDialog.vue';
 
 const props = defineProps<{ items: FsEntry[] }>();
 const activeFile = ref<FsEntry|null>(null);
@@ -153,6 +173,11 @@ const viewMode = ref<'grid'|'list'>('grid');
 // Drag & Drop state and handlers
 const dragging = ref<FsEntry | null>(null);
 const dragOverId = ref<string | null>(null);
+
+// Modals
+const showCreateFolder = ref(false);
+const showDelete = ref(false);
+let deleteTarget: FsEntry | null = null;
 
 function onCardDragStart(item: FsEntry, ev: DragEvent) {
   dragging.value = item;
@@ -276,25 +301,35 @@ async function onPick(e: Event) {
   }
 }
 
-async function onCreateFolder() {
-  const name = prompt('Название новой папки:');
-  if (!name) return;
+function onCreateFolder() {
+  showCreateFolder.value = true;
+}
+async function doCreateFolder(name: string) {
   try {
     await FilesApi.createFolder(name, parentId ?? null);
     await refresh();
   } catch (err: any) {
     alert(err?.response?.data?.message || err.message);
+  } finally {
+    showCreateFolder.value = false;
   }
 }
 
 async function onDelete(it: FsEntry) {
   hideContextMenu();
-  if (!confirm(`Удалить ${it.kind === 'folder' ? 'папку' : 'файл'} "${it.name}"?`)) return;
+  deleteTarget = it;
+  showDelete.value = true;
+}
+async function doDelete() {
+  if (!deleteTarget) return;
   try {
-    await FilesApi.remove(it.id);
+    await FilesApi.remove(deleteTarget.id);
     await refresh();
   } catch (err: any) {
     alert(err?.response?.data?.message || err.message);
+  } finally {
+    showDelete.value = false;
+    deleteTarget = null;
   }
 }
 

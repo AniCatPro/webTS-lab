@@ -231,6 +231,19 @@ filesRouter.post('/folder', async (req, res) => {
     }
   }
 
+  // Проверка на дубликаты (регистронезависимо в пределах одного родителя)
+  const existing = await prisma.file.findFirst({
+    where: {
+      kind: 'folder',
+      parentId: parentId ?? null,
+      name: { equals: name, mode: 'insensitive' },
+    },
+    select: { id: true },
+  });
+  if (existing) {
+    return res.status(409).json({ message: 'Такая папка уже существует в этой директории' });
+  }
+
   const folder = await prisma.file.create({
     data: {
       name,
