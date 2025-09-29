@@ -41,16 +41,13 @@
         :key="it.id"
         class="column is-12-mobile is-6-tablet is-4-desktop is-3-widescreen"
     >
-      <div
-          class="fm-grid-item"
-          @dblclick="onDblClick(it)"
-          @contextmenu.prevent="openContextMenu($event, it)"
-      >
+      <div class="fm-grid-item" @dblclick="onDblClick(it)">
         <FileCard
             :item="it"
             @open="onOpen"
             @delete="onDelete"
             @move="onMove"
+            @context="(item, ev) => openContextMenu(ev, item)"
         />
       </div>
     </div>
@@ -149,8 +146,10 @@ const ctx = ref<{ visible: boolean; x: number; y: number; target: FsEntry | null
   visible: false, x: 0, y: 0, target: null
 });
 function openContextMenu(e: MouseEvent, it: FsEntry) {
-  ctx.value = { visible: true, x: e.clientY ? e.clientX : 0, y: e.clientY, target: it };
+  e.preventDefault();
+  ctx.value = { visible: true, x: e.clientX, y: e.clientY, target: it };
 }
+
 function hideContextMenu() { ctx.value.visible = false; }
 function onWindowClick() { hideContextMenu(); }
 onMounted(() => window.addEventListener('click', onWindowClick));

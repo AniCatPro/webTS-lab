@@ -1,5 +1,5 @@
 <template>
-  <article class="drive-card" @contextmenu.stop="$emit('context', item)">
+  <article class="drive-card" @contextmenu.stop="$emit('context', item, $event)">
     <div class="thumb">
       <img v-if="thumb?.url" :src="thumb.url" :alt="item.name" />
       <div v-else class="thumb-fallback">
@@ -28,7 +28,7 @@ defineEmits<{
   (e:'open', item: FsEntry): void;
   (e:'delete', item: FsEntry): void;
   (e:'move', item: FsEntry): void;
-  (e:'context', item: FsEntry): void;
+  (e:'context', item: FsEntry, ev: MouseEvent): void; // важно!
 }>();
 
 const item = props.item;
