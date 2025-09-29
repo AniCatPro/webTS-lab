@@ -1,5 +1,11 @@
 <template>
-  <article class="drive-card" @contextmenu.stop="$emit('context', item, $event)">
+  <article
+    class="drive-card"
+    draggable="true"
+    @dragstart="onDragStart"
+    @dragend="onDragEnd"
+    @contextmenu.stop="$emit('context', item, $event)"
+  >
     <div class="thumb">
       <img v-if="thumb?.url" :src="thumb.url" :alt="item.name" />
       <div v-else class="thumb-fallback">
@@ -24,11 +30,13 @@ import type { FsEntry } from '@/types';
 import { makeThumbnail, type ThumbResult } from '@/utils/thumbnail';
 
 const props = defineProps<{ item: FsEntry }>();
-defineEmits<{
+const emit = defineEmits<{
   (e:'open', item: FsEntry): void;
   (e:'delete', item: FsEntry): void;
   (e:'move', item: FsEntry): void;
-  (e:'context', item: FsEntry, ev: MouseEvent): void; // важно!
+  (e:'context', item: FsEntry, ev: MouseEvent): void;
+  (e:'dragstart', item: FsEntry, ev: DragEvent): void;
+  (e:'dragend', item: FsEntry, ev: DragEvent): void;
 }>();
 
 const item = props.item;
@@ -47,6 +55,16 @@ function splitName(name: string) {
 const { base: baseNameInit, ext: extInit } = splitName(item.name);
 const baseName = ref(baseNameInit);
 const ext = ref(extInit.toLowerCase());
+
+function onDragStart(ev: DragEvent) {
+  ev.dataTransfer?.setData('text/plain', item.id);
+  ev.dataTransfer!.effectAllowed = 'move';
+  emit('dragstart', item, ev);
+}
+
+function onDragEnd(ev: DragEvent) {
+  emit('dragend', item, ev);
+}
 
 onMounted(async () => {
   thumb.value = await makeThumbnail(item);

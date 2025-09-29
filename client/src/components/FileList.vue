@@ -35,26 +35,28 @@
   </div>
 
   <!-- GRID VIEW -->
-  <div v-if="viewMode==='grid'" class="columns is-multiline is-variable is-5">
+  <div v-if="viewMode==='grid'" class="columns is-multiline is-variable is-5" @dragover.prevent="onDesktopDragOver" @drop.prevent="onDesktopDrop">
     <div
         v-for="it in items"
         :key="it.id"
         class="column is-12-mobile is-6-tablet is-4-desktop is-3-widescreen"
     >
-      <div class="fm-grid-item" @dblclick="onDblClick(it)">
+      <div class="fm-grid-item" @dblclick="onDblClick(it)" :class="{ 'is-drop-target': dragOverId===it.id }" @dragover.prevent="it.kind==='folder' ? onFolderDragOver(it, $event) : null" @dragleave="it.kind==='folder' ? onFolderDragLeave(it) : null" @drop.prevent="it.kind==='folder' ? onFolderDrop(it, $event) : null">
         <FileCard
             :item="it"
             @open="onOpen"
             @delete="onDelete"
             @move="onMove"
             @context="(item, ev) => openContextMenu(ev, item)"
+            @dragstart="onCardDragStart"
+            @dragend="onCardDragEnd"
         />
       </div>
     </div>
   </div>
 
   <!-- LIST VIEW -->
-  <div v-else class="table-container">
+  <div v-else class="table-container" @dragover.prevent="onDesktopDragOver" @drop.prevent="onDesktopDrop">
     <table class="table is-fullwidth is-hoverable is-striped">
       <thead>
       <tr>
@@ -68,8 +70,15 @@
       <tr
           v-for="it in items"
           :key="it.id"
+          draggable="true"
+          @dragstart="onRowDragStart(it, $event)"
+          @dragend="onRowDragEnd"
           @dblclick="onDblClick(it)"
           @contextmenu.prevent="openContextMenu($event, it)"
+          :class="{ 'is-drop-target': dragOverId===it.id }"
+          @dragover.prevent="it.kind==='folder' ? onFolderDragOver(it, $event) : null"
+          @dragleave="it.kind==='folder' ? onFolderDragLeave(it) : null"
+          @drop.prevent="it.kind==='folder' ? onFolderDrop(it, $event) : null"
           style="cursor: default;"
       >
         <td>
@@ -140,6 +149,91 @@ const store = useFiles();
 const parentId = (route.name === 'folder') ? String(route.params.id) : undefined;
 
 const viewMode = ref<'grid'|'list'>('grid');
+
+// Drag & Drop state and handlers
+const dragging = ref<FsEntry | null>(null);
+const dragOverId = ref<string | null>(null);
+
+function onCardDragStart(item: FsEntry, ev: DragEvent) {
+  dragging.value = item;
+  ev.dataTransfer && (ev.dataTransfer.effectAllowed = 'move');
+  hideContextMenu();
+}
+function onCardDragEnd() {
+  dragging.value = null;
+  dragOverId.value = null;
+}
+function onRowDragStart(item: FsEntry, ev: DragEvent) {
+  dragging.value = item;
+  ev.dataTransfer && (ev.dataTransfer.effectAllowed = 'move');
+  hideContextMenu();
+}
+function onRowDragEnd() {
+  dragging.value = null;
+  dragOverId.value = null;
+}
+
+function onFolderDragOver(folder: FsEntry, e: DragEvent) {
+  if (folder.kind !== 'folder') return;
+  if (dragging.value && dragging.value.id === folder.id) return; // prevent self
+  dragOverId.value = folder.id;
+  if (e.dataTransfer) e.dataTransfer.dropEffect = dragging.value ? 'move' : 'copy';
+}
+function onFolderDragLeave(folder: FsEntry) {
+  if (dragOverId.value === folder.id) dragOverId.value = null;
+}
+async function onFolderDrop(folder: FsEntry, e: DragEvent) {
+  if (folder.kind !== 'folder') return;
+
+  // Move existing entry
+  if (dragging.value) {
+    if (dragging.value.id === folder.id) return;
+    try {
+      await FilesApi.move(dragging.value.id, folder.id);
+      await refresh();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err.message);
+    } finally {
+      dragging.value = null;
+      dragOverId.value = null;
+    }
+    return;
+  }
+
+  // Upload dropped files from OS to this folder
+  const droppedFiles = Array.from(e.dataTransfer?.files || []);
+  if (droppedFiles.length) {
+    try {
+      for (const f of droppedFiles) {
+        await FilesApi.upload(f, folder.id);
+      }
+      await refresh();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err.message);
+    } finally {
+      dragOverId.value = null;
+    }
+  }
+}
+
+// Desktop drop to current folder
+function onDesktopDragOver(e: DragEvent) {
+  if ((e.dataTransfer?.types || []).includes('Files')) {
+    e.dataTransfer!.dropEffect = 'copy';
+  }
+}
+async function onDesktopDrop(e: DragEvent) {
+  const droppedFiles = Array.from(e.dataTransfer?.files || []);
+  if (!droppedFiles.length) return;
+  try {
+    for (const f of droppedFiles) {
+      await FilesApi.upload(f, parentId ?? null);
+    }
+    await refresh();
+  } catch (err: any) {
+    alert(err?.response?.data?.message || err.message);
+  }
+}
 
 // контекстное меню
 const ctx = ref<{ visible: boolean; x: number; y: number; target: FsEntry | null }>({
@@ -270,4 +364,10 @@ function prettyType(it: FsEntry) {
 }
 .fm-context-item:hover { background: #f6f6f6; }
 .fm-context-item.danger { color: #c0392b; }
+.is-drop-target {
+  outline: 2px dashed #409eff;
+  outline-offset: 2px;
+  background: rgba(64,158,255,0.06);
+  border-radius: 10px;
+}
 </style>
