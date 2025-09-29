@@ -103,6 +103,37 @@
     </table>
   </div>
 
+  <!-- Empty-folder dropzone -->
+  <div
+    v-if="items.length === 0"
+    class="empty-drop"
+    :class="{ 'is-over': overDesktop }"
+    @dragover.prevent="onDesktopDragOver"
+    @dragleave.prevent="overDesktop = false"
+    @drop.prevent="onDesktopDrop"
+  >
+    <div class="inner">
+      <div class="icon">📥</div>
+      <div class="title">Папка пуста</div>
+      <div class="hint">Перетащите файлы сюда, чтобы загрузить их</div>
+    </div>
+  </div>
+
+  <!-- Folder-wide overlay dropzone (visible during drag) -->
+  <div
+    v-if="overDesktop"
+    class="folder-drop-overlay"
+    @dragover.prevent="onDesktopDragOver"
+    @dragleave.prevent="overDesktop = false"
+    @drop.prevent="onDesktopDrop"
+  >
+    <div class="overlay-card">
+      <div class="icon">📥</div>
+      <div class="title">Загрузить в текущую папку</div>
+      <div class="hint">Отпустите, чтобы начать загрузку</div>
+    </div>
+  </div>
+
   <!-- Контекстное меню -->
   <div
       v-if="ctx.visible"
@@ -162,8 +193,8 @@ import CreateFolderDialog from '@/components/CreateFolderDialog.vue';
 import { useTransfers } from '@/stores/transfers';
 
 // Глобальные обработчики DnD, чтобы браузер не открывал файл при дропе
-const onWinDragOver = (e: DragEvent) => { e.preventDefault(); };
-const onWinDrop = (e: DragEvent) => { e.preventDefault(); };
+const onWinDragOver = (e: DragEvent) => { e.preventDefault(); overDesktop.value = true; };
+const onWinDrop = (e: DragEvent) => { e.preventDefault(); overDesktop.value = false; };
 
 const props = defineProps<{ items: FsEntry[] }>();
 const activeFile = ref<FsEntry|null>(null);
@@ -181,6 +212,7 @@ watch(() => route.fullPath, refresh);
 // Drag & Drop state and handlers
 const dragging = ref<FsEntry | null>(null);
 const dragOverId = ref<string | null>(null);
+const overDesktop = ref(false);
 
 // Modals
 const showCreateFolder = ref(false);
@@ -262,10 +294,11 @@ function onDesktopDragOver(e: DragEvent) {
   if ((e.dataTransfer?.types || []).includes('Files')) {
     e.dataTransfer!.dropEffect = 'copy';
   }
+  overDesktop.value = true;
 }
 async function onDesktopDrop(e: DragEvent) {
   const droppedFiles = Array.from(e.dataTransfer?.files || []);
-  if (!droppedFiles.length) return;
+  if (!droppedFiles.length) { overDesktop.value = false; return; }
   try {
     for (const f of droppedFiles) {
       const id = transfers.start(f.name, f.size);
@@ -281,6 +314,8 @@ async function onDesktopDrop(e: DragEvent) {
     await refresh();
   } catch (err: any) {
     alert(err?.response?.data?.message || err.message);
+  } finally {
+    overDesktop.value = false;
   }
 }
 
@@ -451,4 +486,45 @@ function prettyType(it: FsEntry) {
   background: rgba(64,158,255,0.06);
   border-radius: 10px;
 }
+.empty-drop {
+  min-height: 220px;
+  border: 2px dashed #d6d6d6;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #fafafa;
+  color: #666;
+  margin-top: 12px;
+}
+.empty-drop.is-over {
+  border-color: #409eff;
+  background: rgba(64,158,255,0.06);
+}
+.empty-drop .inner { text-align: center; padding: 24px; }
+.empty-drop .icon { font-size: 40px; margin-bottom: 8px; }
+.empty-drop .title { font-weight: 700; margin-bottom: 4px; }
+.empty-drop .hint { font-size: .95rem; color: #888; }
+
+.folder-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* выше контекстного меню */
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.15);
+  backdrop-filter: blur(2px);
+}
+.folder-drop-overlay .overlay-card {
+  min-width: 360px;
+  max-width: 560px;
+  padding: 24px 28px;
+  background: #fff;
+  border: 2px dashed #409eff;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+}
+.folder-drop-overlay .icon { font-size: 42px; margin-bottom: 8px; }
+.folder-drop-overlay .title { font-weight: 700; margin-bottom: 4px; }
+.folder-drop-overlay .hint { color: #666; }
 </style>
