@@ -2,15 +2,21 @@ import axios from 'axios';
 
 export const http = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    withCredentials: true, // отправляем cookie с JWT ко всем запросам к API
+    withCredentials: true,
 });
 
+function redirectToLoginOnce() {
+    const isOnLogin = location.hash.startsWith('#/login');
+    if (!isOnLogin) {
+        location.replace(`${location.origin}${location.pathname}#/login`);
+    }
+}
+
 http.interceptors.response.use(
-    r => r,
-    (err) => {
-// централизованный перехват ошибок
-        const msg = err.response?.data?.message || err.message;
-        console.error('API error:', msg);
-        return Promise.reject(err);
+    (resp) => resp,
+    (error) => {
+        const status = error?.response?.status;
+        if (status === 401) redirectToLoginOnce();
+        return Promise.reject(error);
     }
 );
