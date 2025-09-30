@@ -141,14 +141,14 @@
       :style="{ top: `${ctx.y}px`, left: `${ctx.x}px` }"
       @click.stop
   >
-    <button class="fm-context-item" @click="onMove(ctx.target!)">Переместить…</button>
+    <button class="fm-context-item" @mousedown.prevent.stop="onMove()">Переместить…</button>
     <button class="fm-context-item danger" @click="onDelete(ctx.target!)">Удалить</button>
   </div>
 
   <!-- Модал перемещения -->
   <MoveDialog
       v-if="moveOpen"
-      :current-parent-id="parentId.value ?? null"
+      :current-parent-id="parentId ?? null"
       @close="moveOpen=false"
       @confirm="doMove"
   />
@@ -417,11 +417,17 @@ async function doDelete() {
 // перемещение через модал выбора папки
 const moveOpen = ref(false);
 let moveTarget: FsEntry | null = null;
-function onMove(it: FsEntry) {
-  hideContextMenu();
-  moveTarget = it;
+
+function onMove(it?: FsEntry) {
+  // берём цель либо из параметра, либо из контекст-меню
+  const target = it ?? ctx.value.target;
+  if (!target) return;
+  // сначала фиксируем цель, потом скрываем меню
+  moveTarget = target;
   moveOpen.value = true;
+  hideContextMenu();
 }
+
 async function doMove(destParentId: string | null) {
   if (!moveTarget) return;
   try {
