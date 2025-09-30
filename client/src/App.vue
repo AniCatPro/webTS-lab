@@ -12,10 +12,15 @@
           <strong class="ml-2">FileManager</strong>
         </router-link>
 
-        <a role="button" class="navbar-burger"
-           :class="{ 'is-active': burger }"
-           @click="burger = !burger"
-           aria-label="menu" aria-expanded="false" data-target="navMenu">
+        <a
+            role="button"
+            class="navbar-burger"
+            :class="{ 'is-active': burger }"
+            @click="burger = !burger"
+            aria-label="menu"
+            aria-expanded="false"
+            data-target="navMenu"
+        >
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </a>
       </div>
@@ -27,28 +32,32 @@
         </div>
 
         <div class="navbar-end">
-          <!-- Переключатель темы -->
+          <!-- Переключатель темы (иконки) -->
           <div class="navbar-item">
-            <div class="buttons has-addons theme-toggle">
+            <div class="theme-toggle-icons" role="group" aria-label="Theme switch">
               <button
-                  class="button"
-                  :class="{ 'is-link is-light': theme.mode==='auto' && effectiveTheme==='light',
-                          'is-link is-dark': theme.mode==='auto' && effectiveTheme==='dark' }"
+                  class="tt-btn"
+                  :class="{ active: theme.mode==='auto' }"
                   @click="theme.setMode('auto')"
                   title="Авто (от системы)"
-              >Авто</button>
+                  aria-label="Авто (от системы)"
+              >🅰️</button>
+
               <button
-                  class="button"
-                  :class="{ 'is-link is-light': theme.mode==='light' }"
+                  class="tt-btn"
+                  :class="{ active: theme.mode==='light' }"
                   @click="theme.setMode('light')"
-                  title="Дневная"
-              >День</button>
+                  title="Дневная тема"
+                  aria-label="Дневная тема"
+              >☀️</button>
+
               <button
-                  class="button"
-                  :class="{ 'is-link is-dark': theme.mode==='dark' }"
+                  class="tt-btn"
+                  :class="{ active: theme.mode==='dark' }"
                   @click="theme.setMode('dark')"
-                  title="Ночная"
-              >Ночь</button>
+                  title="Ночная тема"
+                  aria-label="Ночная тема"
+              >🌙</button>
             </div>
           </div>
 
@@ -113,7 +122,7 @@ html, body, #app { height: 100%; }
   --text-muted: #6e7781;
   --border: #d0d7de;
   --link: #0969da;
-  --accent: #409eff; /* твой основной */
+  --accent: #409eff; /* основной акцент */
 }
 
 /* ------------------ Палитра (тёмная, мягкая) ------------------ */
@@ -135,7 +144,7 @@ body {
   color: var(--text);
 }
 
-/* ---------- NAVBAR (используем is-light/is-dark + подкраска) ---------- */
+/* ---------- NAVBAR ---------- */
 .navbar.is-dark { background: #161b22; }
 .navbar.is-light { background: #f6f8fa; }
 html.theme-dark .navbar-item,
@@ -144,7 +153,7 @@ html.theme-dark .navbar-link { color: var(--text); }
 /* логотип */
 .logo { width: 28px; height: 28px; }
 
-/* ---------- Карточки/боксы/модалки/выпадашки ---------- */
+/* ---------- Общие контейнеры ---------- */
 .box, .card, .modal-card, .dropdown-content, .menu, .message, .hero {
   background: var(--surface);
   color: var(--text);
@@ -163,11 +172,7 @@ html.theme-dark .navbar-link { color: var(--text); }
   border-color: var(--border);
 }
 .table td, .table th { border-color: var(--border) !important; }
-
-/* полосатость — очень мягкая */
-.table.is-striped tbody tr:not(.is-selected):nth-child(even) {
-  background: var(--surface-2);
-}
+.table.is-striped tbody tr:not(.is-selected):nth-child(even) { background: var(--surface-2); }
 
 /* ---------- Формы ---------- */
 .input, .textarea, .select select {
@@ -189,14 +194,12 @@ html.theme-dark .button.is-light {
   border-color: var(--border);
   color: var(--text);
 }
-html.theme-dark .button.is-light:hover {
-  background: #262c34;
-}
+html.theme-dark .button.is-light:hover { background: #262c34; }
 
 /* ---------- Ссылки ---------- */
 a { color: var(--link); }
 
-/* ---------- Наши виджеты/таблицы в списках ---------- */
+/* ---------- Наши дропзоны/оверлеи ---------- */
 .empty-drop {
   background: var(--surface-2);
   border-color: var(--border);
@@ -206,40 +209,76 @@ a { color: var(--link); }
   background: rgba(88,166,255,0.08);
   border-color: var(--accent);
 }
-
-.folder-drop-overlay {
-  background: rgba(0,0,0,0.35);
-}
+.folder-drop-overlay { background: rgba(0,0,0,0.35); }
 .folder-drop-overlay .overlay-card {
   background: var(--surface);
   border-color: var(--accent);
   color: var(--text);
 }
 
-/* контекстное меню */
+/* ---------- Контекстное меню ---------- */
 .fm-context {
   background: var(--surface);
-  border-color: var(--border);
+  border: 1px solid var(--border);
   color: var(--text);
 }
 .fm-context-item:hover { background: var(--surface-2); }
 
-/* grid-карточки файлов */
+/* ---------- Карточки файлов ---------- */
 .drive-card {
   background: var(--surface);
-  border-color: var(--border);
+  border: 1px solid var(--border);
 }
 .thumb { background: var(--surface-2); }
 
-/* таблица списка — лёгкие разделители и цвета */
+/* вспомогат. */
 .table-container { background: transparent; }
-
-/* мягкая подсветка drop-цели */
 .is-drop-target {
   outline: 2px dashed var(--accent);
   background: rgba(88,166,255,0.08);
 }
-
-/* мелкие утилиты */
 .text-muted { color: var(--text-muted); }
+
+/* Theme toggle (icon variant) */
+.theme-toggle-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.theme-toggle-icons .tt-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: .35rem .5rem;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 999px;
+  color: var(--text);
+  opacity: .8;
+  transition: background .15s ease, opacity .15s ease, transform .12s ease;
+}
+
+.theme-toggle-icons .tt-btn:hover {
+  opacity: 1;
+  background: rgba(0,0,0,.04);
+}
+html.theme-dark .theme-toggle-icons .tt-btn:hover {
+  background: rgba(255,255,255,.06);
+}
+
+.theme-toggle-icons .tt-btn.active {
+  opacity: 1;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08) inset;
+}
+
+/* чуть уменьшить отступы справа в navbar */
+.navbar-end .navbar-item .theme-toggle-icons { margin-right: .25rem; }
+
 </style>

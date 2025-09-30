@@ -1,54 +1,51 @@
-import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+// client/src/stores/theme.ts
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
 
-export type ThemeMode = 'auto' | 'light' | 'dark';
+type ThemeMode = "auto" | "light" | "dark";
 
-const STORAGE_KEY = 'fm_theme_mode';
+export const useTheme = defineStore("theme", () => {
+    // хранится режим, выбранный пользователем
+    const mode = ref<ThemeMode>("auto");
 
-export const useTheme = defineStore('theme', () => {
-    const mode = ref<ThemeMode>('auto');
-    const systemDarkMql = window.matchMedia?.('(prefers-color-scheme: dark)');
-    const systemIsDark = ref<boolean>(!!systemDarkMql?.matches);
-
-    const effective = computed<'light' | 'dark'>(() => {
-        if (mode.value === 'auto') return systemIsDark.value ? 'dark' : 'light';
+    // вычисляемый: какой реально сейчас режим (light/dark)
+    const effective = computed(() => {
+        if (mode.value === "auto") {
+            return window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+        }
         return mode.value;
     });
 
-    function applyDomClass() {
-        const root = document.documentElement;
-        if (effective.value === 'dark') root.classList.add('theme-dark');
-        else root.classList.remove('theme-dark');
-
-        // полезно для корректных нативных виджетов/скроллбаров
-        root.style.colorScheme = effective.value;
+    function setMode(m: ThemeMode) {
+        mode.value = m;
+        apply();
+        localStorage.setItem("theme-mode", m);
     }
 
-    function setMode(next: ThemeMode) {
-        mode.value = next;
-        localStorage.setItem(STORAGE_KEY, next);
-        applyDomClass();
+    function apply() {
+        const html = document.documentElement;
+        if (effective.value === "dark") {
+            html.classList.add("theme-dark");
+        } else {
+            html.classList.remove("theme-dark");
+        }
     }
 
     function init() {
-        const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-        if (saved === 'auto' || saved === 'light' || saved === 'dark') {
-            mode.value = saved;
-        }
+        // пробуем из localStorage
+        const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
+        if (saved) mode.value = saved;
 
-        if (systemDarkMql) {
-            const handler = (e: MediaQueryListEvent) => {
-                systemIsDark.value = e.matches;
-                if (mode.value === 'auto') applyDomClass();
-            };
-            systemDarkMql.addEventListener?.('change', handler);
-        }
+        // слушаем изменения системной темы
+        const media = window.matchMedia("(prefers-color-scheme: dark)");
+        media.addEventListener("change", () => {
+            if (mode.value === "auto") apply();
+        });
 
-        applyDomClass();
+        apply();
     }
-
-    // если кто-то где-то поменяет mode, авто-применим класс
-    watch(mode, applyDomClass);
 
     return { mode, effective, setMode, init };
 });
