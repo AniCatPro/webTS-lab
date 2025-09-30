@@ -28,7 +28,13 @@
       <div id="navMenu" class="navbar-menu" :class="{ 'is-active': burger }">
         <div class="navbar-start">
           <router-link class="navbar-item" :to="{ name: 'home' }">Главная</router-link>
-          <router-link class="navbar-item" :to="{ name: 'admin' }">Админ</router-link>
+          <router-link
+            v-if="user?.role === 'ADMIN'"
+            class="navbar-item"
+            :to="{ name: 'admin' }"
+          >
+            Админ
+          </router-link>
         </div>
 
         <div class="navbar-end">

@@ -1,22 +1,64 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path, { dirname } from 'path';
-import mime from 'mime-types';
 import { fileURLToPath } from 'url';
+import mime from 'mime-types';
 
 const prisma = new PrismaClient();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const STATIC_DIR = path.join(__dirname, '..', '..', 'static', 'seed');
 
-function toEncodedUrl(rel: string) {
-    return rel.split(path.sep).join('/').split('/').map(encodeURIComponent).join('/');
+function urlFor(filename: string) {
+    return `http://localhost:${process.env.PORT || 4000}/static/seed/${encodeURIComponent(filename)}`;
+}
+
+async function ensureFolder(name: string) {
+    const folder = await prisma.folder.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+    });
+    await prisma.auditLog.create({
+        data: {
+            action: 'CREATE_FOLDER',
+            details: `Folder created or exists: ${name}`,
+        },
+    });
+    return folder;
+}
+
+async function ensureSeedFile(filename: string, folderId: number) {
+    const filePath = path.join(STATIC_DIR, filename);
+    if (!fs.existsSync(filePath)) return null;
+    const stat = fs.statSync(filePath);
+    const mimeType = mime.lookup(filename) || 'application/octet-stream';
+    const file = await prisma.file.upsert({
+        where: { name: filename },
+        update: {},
+        create: {
+            name: filename,
+            mimeType,
+            size: stat.size,
+            url: urlFor(filename),
+            folderId,
+        },
+    });
+    await prisma.auditLog.create({
+        data: {
+            action: 'CREATE_FILE',
+            details: `File created or exists: ${filename} in folder ${folderId}`,
+        },
+    });
+    return file;
 }
 
 async function main() {
-    // админ
     const adminPass = await bcrypt.hash('admin123', 10);
+    const userPass = await bcrypt.hash('user123', 10);
+
     await prisma.user.upsert({
         where: { email: 'admin@example.com' },
         update: {},
@@ -27,62 +69,28 @@ async function main() {
         },
     });
 
-    // очищаем данные
-    await prisma.textRevision.deleteMany();
-    await prisma.file.deleteMany();
+    await prisma.user.upsert({
+        where: { email: 'user@example.com' },
+        update: {},
+        create: {
+            email: 'user@example.com',
+            passwordHash: userPass,
+            role: 'USER',
+        },
+    });
 
-    const baseUrl = `http://localhost:${process.env.PORT || 4000}/static/seed`;
-    const seedDir = path.join(__dirname, '..', '..', 'static', 'seed');
+    const documents = await ensureFolder('Документы');
+    const media = await ensureFolder('Медиа');
+    const images = await ensureFolder('Изображения');
 
-    const entries: any[] = [];
+    await ensureSeedFile('readme.md', documents.id);
+    await ensureSeedFile('sample.pdf', documents.id);
+    await ensureSeedFile('Nextcloud intro.mp4', media.id);
+    await ensureSeedFile('Welcome to your Nextcloud.png', images.id);
 
-    for (const file of fs.readdirSync(seedDir)) {
-        const filePath = path.join(seedDir, file);
-        if (fs.statSync(filePath).isFile()) {
-            const ext = path.extname(file).toLowerCase();
-
-            let mimeType = mime.lookup(file) || 'application/octet-stream';
-            // нормализация популярных форматов
-            if (ext === '.mp4') mimeType = 'video/mp4';
-            if (ext === '.mp3') mimeType = 'audio/mpeg';
-            if (ext === '.md') mimeType = 'text/markdown';
-            if (ext === '.txt') mimeType = 'text/plain';
-
-            let type: 'image' | 'video' | 'audio' | 'document' | 'other' = 'other';
-            if (mimeType.startsWith('image/')) type = 'image';
-            else if (mimeType.startsWith('video/')) type = 'video';
-            else if (mimeType.startsWith('audio/')) type = 'audio';
-            else if (
-                mimeType === 'application/pdf' ||
-                mimeType.startsWith('text/') ||
-                mimeType.includes('markdown')
-            ) {
-                type = 'document';
-            }
-
-            const stat = fs.statSync(filePath);
-
-            const decodedName = Buffer.from(file, 'latin1').toString('utf8');
-
-            entries.push({
-                name: decodedName,
-                kind: 'file',
-                mimeType,
-                type,
-                url: `${baseUrl}/${toEncodedUrl(file)}`,
-                size: stat.size,
-            });
-        }
-    }
-
-    if (entries.length > 0) {
-        await prisma.file.createMany({ data: entries });
-        console.log(`Seeded ${entries.length} files from static/seed`);
-    } else {
-        console.log('No files found in static/seed');
-    }
-
+    console.log('Seed complete:');
     console.log('Admin: admin@example.com / admin123');
+    console.log('User: user@example.com / user123');
 }
 
 main()
