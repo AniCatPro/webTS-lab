@@ -1,4 +1,3 @@
-<!-- client/src/pages/AdminPage.vue -->
 <template>
   <section class="section">
     <div class="container">

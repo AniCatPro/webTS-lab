@@ -538,35 +538,44 @@ filesRouter.put('/:id/move', async (req, res) => {
  * DELETE /api/files/:id
  */
 filesRouter.delete('/:id', async (req, res) => {
-    const f = await prisma.file.findUnique({
-        where: { id: req.params.id },
-        include: { children: true },
-    });
-    if (!f) return res.status(404).json({ message: 'Not found' });
+  const f = await prisma.file.findUnique({
+    where: { id: req.params.id },
+    include: { children: true },
+  });
+  if (!f) return res.status(404).json({ message: 'Not found' });
 
-    if (f.kind === 'folder' && f.children.length > 0) {
-        return res.status(400).json({ message: 'Folder is not empty' });
-    }
+  if (f.kind === 'folder' && f.children.length > 0) {
+    return res.status(400).json({ message: 'Folder is not empty' });
+  }
 
-    if (f.kind === 'file' && f.url && f.url.includes('/static/uploads/')) {
-        const urlPath = f.url.split('/static/')[1];
-        const abs = path.join(STATIC_DIR, urlPath);
-        try {
-            if (fs.existsSync(abs)) fs.unlinkSync(abs);
-        } catch (e) {
-            console.warn('unlink failed', e);
-        }
-    }
-
-    await prisma.file.delete({ where: { id: f.id } });
-    const actorId = req.user?.id;
-    if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+  // 1) Пишем аудит ДО удаления (чтобы target ссылался на существующую запись)
+  try {
+    const actorId = req.user?.id ?? null;
     await writeAudit('file.delete', {
       actorId,
       targetId: f.id,
       targetType: f.kind === 'folder' ? 'folder' : 'file',
       targetName: f.name,
-      details: { parentId: f.parentId ?? null }
+      details: { parentId: f.parentId ?? null, size: f.size ?? null, mimeType: f.mimeType ?? null },
     });
-    res.json({ ok: true });
+  } catch (e) {
+    // не срываем удаление из-за проблем с логированием
+    console.warn('audit log (file.delete) failed:', e);
+  }
+
+  // 2) Удаляем физический файл, если он был загружен через /uploads
+  if (f.kind === 'file' && f.url && f.url.includes('/static/uploads/')) {
+    const urlPath = f.url.split('/static/')[1];
+    const abs = path.join(STATIC_DIR, urlPath);
+    try {
+      if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    } catch (e) {
+      console.warn('unlink failed', e);
+    }
+  }
+
+  // 3) Удаляем запись из БД
+  await prisma.file.delete({ where: { id: f.id } });
+
+  res.json({ ok: true });
 });
