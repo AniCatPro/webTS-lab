@@ -1,12 +1,20 @@
 <template>
   <div>
-    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+    <nav
+        class="navbar"
+        :class="effectiveTheme==='dark' ? 'is-dark' : 'is-light'"
+        role="navigation"
+        aria-label="main navigation"
+    >
       <div class="navbar-brand">
         <router-link class="navbar-item is-flex is-align-items-center" :to="{ name: 'home' }">
-          <img src="@/assets/logo.png" alt="Logo" class="logo" />
+          <img :src="logoSrc" alt="Logo" class="logo" />
           <strong class="ml-2">FileManager</strong>
         </router-link>
-        <a role="button" class="navbar-burger" :class="{ 'is-active': burger }" @click="burger = !burger"
+
+        <a role="button" class="navbar-burger"
+           :class="{ 'is-active': burger }"
+           @click="burger = !burger"
            aria-label="menu" aria-expanded="false" data-target="navMenu">
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </a>
@@ -19,10 +27,35 @@
         </div>
 
         <div class="navbar-end">
+          <!-- Переключатель темы -->
+          <div class="navbar-item">
+            <div class="buttons has-addons theme-toggle">
+              <button
+                  class="button"
+                  :class="{ 'is-link is-light': theme.mode==='auto' && effectiveTheme==='light',
+                          'is-link is-dark': theme.mode==='auto' && effectiveTheme==='dark' }"
+                  @click="theme.setMode('auto')"
+                  title="Авто (от системы)"
+              >Авто</button>
+              <button
+                  class="button"
+                  :class="{ 'is-link is-light': theme.mode==='light' }"
+                  @click="theme.setMode('light')"
+                  title="Дневная"
+              >День</button>
+              <button
+                  class="button"
+                  :class="{ 'is-link is-dark': theme.mode==='dark' }"
+                  @click="theme.setMode('dark')"
+                  title="Ночная"
+              >Ночь</button>
+            </div>
+          </div>
+
           <div class="navbar-item" v-if="user">
             <div class="buttons">
               <span class="mr-3">👤 {{ user.email }}</span>
-              <button class="button is-light" @click="logout">Выйти</button>
+              <button class="button" :class="effectiveTheme==='dark' ? '' : 'is-light'" @click="logout">Выйти</button>
             </div>
           </div>
           <div class="navbar-item" v-else>
@@ -43,15 +76,170 @@
 import { ref, computed, onMounted } from 'vue';
 import { useAuth } from '@/stores/auth';
 import UploadToasts from '@/components/UploadToasts.vue';
+import { useTheme } from '@/stores/theme';
+
+// ЛОГО: положи файлы сюда:
+// client/src/assets/logo.png (дневной)
+// client/src/assets/logo-night.png (ночной)
+import logoLight from '@/assets/logo.png';
+import logoDark from '@/assets/logo-night.png';
 
 const burger = ref(false);
+
 const auth = useAuth();
 const user = computed(() => auth.user);
 
-onMounted(() => auth.fetchMe());
+const theme = useTheme();
+onMounted(() => {
+  theme.init();
+  auth.fetchMe();
+});
+
+const effectiveTheme = computed(() => theme.effective); // 'light' | 'dark'
+const logoSrc = computed(() => effectiveTheme.value === 'dark' ? logoDark : logoLight);
+
 async function logout() { await auth.logout(); }
 </script>
 
 <style>
 html, body, #app { height: 100%; }
+
+/* ------------------ Палитра (светлая) ------------------ */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --text: #1f2328;
+  --text-muted: #6e7781;
+  --border: #d0d7de;
+  --link: #0969da;
+  --accent: #409eff; /* твой основной */
+}
+
+/* ------------------ Палитра (тёмная, мягкая) ------------------ */
+html.theme-dark {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c222b;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --border: #30363d;
+  --link: #58a6ff;
+  --accent: #58a6ff;
+}
+
+html { color-scheme: light dark; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---------- NAVBAR (используем is-light/is-dark + подкраска) ---------- */
+.navbar.is-dark { background: #161b22; }
+.navbar.is-light { background: #f6f8fa; }
+html.theme-dark .navbar-item,
+html.theme-dark .navbar-link { color: var(--text); }
+
+/* логотип */
+.logo { width: 28px; height: 28px; }
+
+/* ---------- Карточки/боксы/модалки/выпадашки ---------- */
+.box, .card, .modal-card, .dropdown-content, .menu, .message, .hero {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* ---------- Таблицы ---------- */
+.table {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.table thead th {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.table td, .table th { border-color: var(--border) !important; }
+
+/* полосатость — очень мягкая */
+.table.is-striped tbody tr:not(.is-selected):nth-child(even) {
+  background: var(--surface-2);
+}
+
+/* ---------- Формы ---------- */
+.input, .textarea, .select select {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.input::placeholder, .textarea::placeholder { color: var(--text-muted); }
+.select:not(.is-multiple):not(.is-loading)::after { border-color: var(--text); }
+
+/* ---------- Кнопки ---------- */
+.button.is-link {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+html.theme-dark .button.is-light {
+  background: #2d333b;
+  border-color: var(--border);
+  color: var(--text);
+}
+html.theme-dark .button.is-light:hover {
+  background: #262c34;
+}
+
+/* ---------- Ссылки ---------- */
+a { color: var(--link); }
+
+/* ---------- Наши виджеты/таблицы в списках ---------- */
+.empty-drop {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.empty-drop.is-over {
+  background: rgba(88,166,255,0.08);
+  border-color: var(--accent);
+}
+
+.folder-drop-overlay {
+  background: rgba(0,0,0,0.35);
+}
+.folder-drop-overlay .overlay-card {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* контекстное меню */
+.fm-context {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.fm-context-item:hover { background: var(--surface-2); }
+
+/* grid-карточки файлов */
+.drive-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.thumb { background: var(--surface-2); }
+
+/* таблица списка — лёгкие разделители и цвета */
+.table-container { background: transparent; }
+
+/* мягкая подсветка drop-цели */
+.is-drop-target {
+  outline: 2px dashed var(--accent);
+  background: rgba(88,166,255,0.08);
+}
+
+/* мелкие утилиты */
+.text-muted { color: var(--text-muted); }
 </style>

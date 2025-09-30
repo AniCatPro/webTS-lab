@@ -76,28 +76,33 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  border: 1px solid #ececec;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: .5rem;
-  background: #fff;
+  background: var(--surface);
   height: 100%;
-  transition: box-shadow .15s ease, border-color .15s ease;
+  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
   cursor: default;
 }
 .drive-card:hover {
-  box-shadow: 0 6px 16px rgba(0,0,0,.08);
-  border-color: #e5e5e5;
+  /* мягкая тень, одинаково смотрится в обеих темах */
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  border-color: var(--border);
 }
+
 .thumb {
   position: relative;
   width: 100%;
   padding-top: 66%;
   border-radius: 10px;
   overflow: hidden;
-  background: #fafafa;
+  background: var(--surface-2);
   display: flex;
   align-items: center;
   justify-content: center;
+  /* тонкая внутренняя рамка, чтобы белые превью не «резали глаз» */
+  outline: 1px solid var(--border);
+  outline-offset: 0;
 }
 .thumb img {
   position: absolute;
@@ -106,14 +111,16 @@ onMounted(async () => {
   height: 100%;
   object-fit: cover;
 }
+
 .thumb-fallback {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   font-size: 2rem;
-  color: #888;
+  color: var(--text-muted);
 }
+
 .caption {
   display: flex;
   align-items: baseline;
@@ -130,6 +137,6 @@ onMounted(async () => {
 }
 .ext {
   font-size: .85rem;
-  color: #888;
+  color: var(--text-muted);
 }
 </style>
