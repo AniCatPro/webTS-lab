@@ -121,7 +121,7 @@
 
   <!-- Folder-wide overlay dropzone (visible during drag) -->
   <div
-    v-if="overDesktop"
+      v-if="overDesktop && !dragging"
     class="folder-drop-overlay"
     @dragover.prevent="onDesktopDragOver"
     @dragleave.prevent="overDesktop = false"
