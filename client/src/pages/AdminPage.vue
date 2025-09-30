@@ -1,3 +1,4 @@
+<!-- client/src/pages/AdminPage.vue -->
 <template>
   <section class="section">
     <div class="container">
@@ -15,12 +16,12 @@
 
       <div class="tabs is-boxed">
         <ul>
-          <li :class="{ 'is-active': tab==='logs' }"><a @click.prevent="tab='logs'">Журнал действий</a></li>
-          <li :class="{ 'is-active': tab==='revisions' }"><a @click.prevent="tab='revisions'">Правки текстов</a></li>
+          <li :class="{ 'is-active': tab==='logs' }"><a @click.prevent="tab='logs'; load()">Журнал действий</a></li>
+          <li :class="{ 'is-active': tab==='revisions' }"><a @click.prevent="tab='revisions'; load()">Правки текстов</a></li>
         </ul>
       </div>
 
-      <!-- ЛОГИ -->
+      <!-- LOGS -->
       <div v-if="tab==='logs'" class="box">
         <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
           <div class="field has-addons">
@@ -39,12 +40,12 @@
                 </select>
               </span>
             </p>
-            <p class="control">
-              <button class="button" @click="loadLogs(1)">Фильтр</button>
-            </p>
+            <p class="control"><button class="button" @click="loadLogs(1)">Фильтр</button></p>
           </div>
           <div class="has-text-grey">Всего: {{ logsTotal }}</div>
         </div>
+
+        <div v-if="error" class="notification is-danger is-light">{{ error }}</div>
 
         <table class="table is-fullwidth is-striped">
           <thead>
@@ -52,8 +53,9 @@
             <th>Время</th>
             <th>Автор</th>
             <th>Событие</th>
-            <th>Имя файла</th>
+            <th>Файл/Папка</th>
             <th>Детали</th>
+            <th class="has-text-right">Открыть</th>
           </tr>
           </thead>
           <tbody>
@@ -63,23 +65,24 @@
             <td><code>{{ r.type }}</code></td>
             <td>
               <template v-if="r.target">
-                {{ r.target.name }}
+                {{ r.target.kind === 'folder' ? 'Папка' : 'Файл' }} — {{ r.target.name }}
               </template>
               <template v-else>
-                {{ r.targetName || '—' }}
+                {{ r.targetType }} <span v-if="r.targetName">— {{ r.targetName }}</span>
               </template>
             </td>
-            <td class="nowrap">
-              <span v-if="r.details">
-                <span v-if="r.details.size != null">{{ prettySize(r.details.size) }}</span>
-                <span v-if="r.details.mimeType" class="tag is-light ml-2">{{ r.details.mimeType }}</span>
-              </span>
+            <td class="details"><span class="tag is-light">{{ shortDetails(r.details) }}</span></td>
+            <td class="has-text-right">
               <button
-                v-if="r.target && r.target.kind==='file'"
-                class="button is-small is-link is-light ml-3"
-                @click="openFromLog(r.target)"
-                title="Открыть файл"
-              >Открыть</button>
+                  v-if="r.target?.kind==='file'"
+                  class="button is-small"
+                  @click="openTarget(r)"
+                  :disabled="openingId===r.target.id"
+              >
+                <span v-if="openingId===r.target.id" class="loader mr-1"></span>
+                Открыть
+              </button>
+              <span v-else class="has-text-grey">—</span>
             </td>
           </tr>
           </tbody>
@@ -92,10 +95,11 @@
         </nav>
       </div>
 
-      <!-- ПРАВКИ ТЕКСТОВ -->
+      <!-- REVISIONS -->
       <div v-else class="box">
         <h2 class="subtitle">Последние текстовые правки</h2>
         <div v-if="error" class="notification is-danger is-light">{{ error }}</div>
+
         <table class="table is-fullwidth is-striped" v-if="revisions.length">
           <thead>
           <tr>
@@ -114,29 +118,37 @@
           </tr>
           </tbody>
         </table>
+
         <p v-else-if="!loading" class="has-text-grey">Записей нет.</p>
       </div>
     </div>
-    <FileViewerWidget v-if="viewerFile" :file="viewerFile" @closed="closeViewer" />
+
+    <!-- Viewer -->
+    <FileViewerWidget
+        v-if="activeFile"
+        :file="activeFile"
+        @closed="activeFile=null"
+        @saved="onSaved"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import { http } from '@/api/http';
-import FileViewerWidget from "@/components/widgets/FileViewerWidget.vue";
+import FileViewerWidget from '@/components/widgets/FileViewerWidget.vue';
 
 type Actor = { id: string; email: string } | null;
 type Target = { id: string; name: string; kind: 'file'|'folder' } | null;
 
 type AuditRow = {
-  id: string; // ID записи лога
+  id: string;
   type: string;
   actor: Actor;
   target: Target;
-  targetType?: string | null;
+  targetType: string;
   targetName?: string | null;
-  details?: { size?: number; mimeType?: string; [k: string]: any } | null;
+  details?: any;
   createdAt: string;
 };
 
@@ -150,25 +162,26 @@ type Revision = {
 
 const tab = ref<'logs'|'revisions'>('logs');
 
-const revisions = ref<Revision[]>([]);
 const logs = ref<AuditRow[]>([]);
+const revisions = ref<Revision[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
-const viewerFile = ref<Target | null>(null);
 
-// базовый адрес API (для ссылок на контент файлов)
+const activeFile = ref<any | null>(null);
+const openingId = ref<string | null>(null);
+
+// Swagger URL
 const API_BASE = (import.meta.env.VITE_API_BASE ?? '/api').toString();
 const apiOrigin = /^https?:\/\//.test(API_BASE)
     ? new URL(API_BASE).origin
     : `${window.location.protocol}//${window.location.hostname}:4000`;
 const apiDocsUrl = computed(() => `${apiOrigin}/api/docs/#/`);
-const fileContentUrl = (id: string) => `${apiOrigin}/api/files/${id}/content`;
 
-// логи: пагинация и фильтр
+// logs pagination/filter
 const page = ref(1);
 const pageSize = ref(50);
 const logsTotal = ref(0);
-const typeFilter = ref<string>(''); // '' = все
+const typeFilter = ref<string>(''); // '' = all
 
 async function loadLogs(p = 1) {
   try {
@@ -205,6 +218,25 @@ async function load() {
   else await loadRevisions();
 }
 
+// Открыть файл из строки лога (Вариант 1 — дотягиваем полный объект)
+async function openTarget(r: AuditRow) {
+  const id = r.target?.id;
+  if (!id) return;
+  openingId.value = id;
+  try {
+    const file = await http.get(`/files/${id}`).then(res => res.data);
+    activeFile.value = file;
+  } catch (e: any) {
+    alert(e?.response?.data?.message || e?.message || String(e));
+  } finally {
+    openingId.value = null;
+  }
+}
+
+function onSaved() {
+  // если был текстовый файл — можно рефрешнуть логи/правки по желанию
+}
+
 function prettyDate(v?: string) {
   if (!v) return '—';
   return new Date(v).toLocaleString();
@@ -214,25 +246,20 @@ function snippet(s: string, n = 140) {
   const one = s.replace(/\s+/g, ' ').trim();
   return one.length > n ? one.slice(0, n - 1) + '…' : one;
 }
-function prettySize(bytes?: number) {
-  if (bytes == null) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  const mb = kb / 1024;
-  if (mb < 1024) return `${mb.toFixed(1)} MB`;
-  const gb = mb / 1024;
-  return `${gb.toFixed(1)} GB`;
+function shortDetails(d: any) {
+  if (!d || typeof d !== 'object') return '';
+  const parts: string[] = [];
+  if (d.mimeType) parts.push(d.mimeType);
+  if (d.size != null) parts.push(`${(d.size/1024).toFixed(1)} KB`);
+  if (d.parentId !== undefined) parts.push(`parent: ${d.parentId ?? '—'}`);
+  if (d.fromParentId !== undefined || d.toParentId !== undefined) {
+    parts.push(`from: ${d.fromParentId ?? '—'} → to: ${d.toParentId ?? '—'}`);
+  }
+  if (!parts.length) return JSON.stringify(d);
+  return parts.join(' · ');
 }
 
-function openFromLog(file: Target) {
-  viewerFile.value = file;
-}
-function closeViewer() {
-  viewerFile.value = null;
-}
-
-onMounted(() => { load(); });
+onMounted(load);
 </script>
 
 <style scoped>
@@ -242,5 +269,10 @@ onMounted(() => { load(); });
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nowrap { white-space: nowrap; }
+.details { white-space: nowrap; }
+.loader {
+  width: 1em; height: 1em; border: 2px solid rgba(0,0,0,.25); border-top-color: currentColor;
+  border-radius: 50%; display: inline-block; animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
