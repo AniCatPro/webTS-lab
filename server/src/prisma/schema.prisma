@@ -3,37 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // или mysql, если у вас MySQL
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  passwordHash String
-  role         Role           @default(USER)
-  revisions    TextRevision[]
-}
-
 enum Role {
-  USER
   ADMIN
-}
-
-model File {
-  id        String        @id @default(cuid())
-  name      String
-  kind      FileKind
-  mimeType  String?
-  type      FileType?
-  parentId  String?
-  parent    File?         @relation("Children", fields: [parentId], references: [id])
-  children  File[]        @relation("Children")
-  size      Int?
-  url       String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  revisions TextRevision[]
+  USER
 }
 
 enum FileKind {
@@ -49,13 +25,71 @@ enum FileType {
   other
 }
 
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt  // ← ДОБАВЛЕН default(now())
+  revisions     TextRevision[]
+  auditLogs     AuditLog[] @relation("AuditActor")
+}
+
+model File {
+  id            String         @id @default(cuid())
+  name          String
+  kind          FileKind
+  mimeType      String?
+  type          FileType?
+  parentId      String?
+  parent        File?          @relation("FileChildren", fields: [parentId], references: [id])
+  children      File[]         @relation("FileChildren")
+  url           String?
+  size          Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  textRevisions TextRevision[]
+  // связь с AuditLog как "цель"
+  auditLogs     AuditLog[]     @relation("AuditTarget")
+
+  @@index([parentId])
+  @@index([type])
+  @@unique([parentId, name, kind], map: "uniq_parent_name_kind")
+}
+
 model TextRevision {
   id        String   @id @default(cuid())
-  file      File     @relation(fields: [fileId], references: [id])
   fileId    String
-  author    User     @relation(fields: [authorId], references: [id])
+  file      File     @relation(fields: [fileId], references: [id])
   authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
   content   String
   createdAt DateTime @default(now())
 }
-@@unique([parentId, name, kind], map: "uniq_parent_name_kind")
+
+model AuditLog {
+  id          String   @id @default(cuid())
+
+  // тип события: 'file.create' | 'file.upload' | 'file.move' | 'file.delete' | 'file.text.update' | 'auth.login' | 'auth.logout' | 'user.create' ...
+  type        String
+
+  // актор события (пользователь)
+  actorId     String?
+  actor       User?    @relation("AuditActor", fields: [actorId], references: [id])
+
+  // целевой объект (обычно File), делаем опциональным
+  targetId    String?
+  target      File?    @relation("AuditTarget", fields: [targetId], references: [id])
+
+  // снапшоты на момент события
+  targetType  String   // 'file' | 'folder' | 'user' | 'system'
+  targetName  String?
+
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+}

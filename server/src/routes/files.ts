@@ -7,6 +7,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mime from 'mime-types';
 import send from 'send';
+import { writeAudit } from '../lib/audit.js';
 
 /**
  * @swagger
@@ -328,10 +329,23 @@ filesRouter.post('/:id/text', async (req, res) => {
         return res.status(400).json({ message: 'Invalid content' });
     }
 
-    // TODO: можно брать автора из req.user.sub
-    const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    // автор — текущий аутентифицированный пользователь
+    const authorId = req.user?.id;
+    if (!authorId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
     await prisma.textRevision.create({
-        data: { fileId: f.id, content, authorId: admin!.id },
+        data: { fileId: f.id, content, authorId },
+    });
+
+    const actorId = req.user?.id;
+    if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+    await writeAudit('file.text.update', {
+      actorId,
+      targetId: f.id,
+      targetType: 'file',
+      targetName: f.name,
+      details: { length: content.length }
     });
 
     res.json({ ok: true });
@@ -410,6 +424,16 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
         },
     });
 
+    const actorId = req.user?.id;
+    if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+    await writeAudit('file.upload', {
+      actorId,
+      targetId: created.id,
+      targetType: 'file',
+      targetName: created.name,
+      details: { parentId: created.parentId, size: created.size, mimeType: created.mimeType }
+    });
+
     res.status(201).json(created);
 });
 
@@ -455,6 +479,16 @@ filesRouter.post('/folder', async (req, res) => {
     },
   });
 
+  const actorId = req.user?.id;
+  if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+  await writeAudit('file.create', {
+    actorId,
+    targetId: folder.id,
+    targetType: 'folder',
+    targetName: folder.name,
+    details: { parentId: folder.parentId }
+  });
+
   res.status(201).json(folder);
 });
 
@@ -481,9 +515,20 @@ filesRouter.put('/:id/move', async (req, res) => {
     }
   }
 
+  const prevParent = f.parentId ?? null;
   const updated = await prisma.file.update({
     where: { id: f.id },
     data: { parentId: parentId ?? null },
+  });
+
+  const actorId = req.user?.id;
+  if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+  await writeAudit('file.move', {
+    actorId,
+    targetId: updated.id,
+    targetType: updated.kind === 'folder' ? 'folder' : 'file',
+    targetName: updated.name,
+    details: { fromParentId: prevParent, toParentId: updated.parentId ?? null }
   });
 
   res.json(updated);
@@ -514,5 +559,14 @@ filesRouter.delete('/:id', async (req, res) => {
     }
 
     await prisma.file.delete({ where: { id: f.id } });
+    const actorId = req.user?.id;
+    if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+    await writeAudit('file.delete', {
+      actorId,
+      targetId: f.id,
+      targetType: f.kind === 'folder' ? 'folder' : 'file',
+      targetName: f.name,
+      details: { parentId: f.parentId ?? null }
+    });
     res.json({ ok: true });
 });
