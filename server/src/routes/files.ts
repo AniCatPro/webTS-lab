@@ -8,6 +8,198 @@ import { fileURLToPath } from 'url';
 import mime from 'mime-types';
 import send from 'send';
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Files
+ *     description: Файлы и папки
+ */
+
+/**
+ * @swagger
+ * /files:
+ *   get:
+ *     tags: [Files]
+ *     summary: Список файлов/папок
+ *     parameters:
+ *       - in: query
+ *         name: parentId
+ *         schema: { type: string, nullable: true }
+ *       - in: query
+ *         name: q
+ *         schema: { type: string }
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [image, video, audio, document, other]
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Пагинация
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page: { type: integer }
+ *                 pageSize: { type: integer }
+ *                 total: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       name: { type: string }
+ *                       kind: { type: string, enum: [file, folder] }
+ *                       mimeType: { type: string, nullable: true }
+ *                       size: { type: integer, nullable: true }
+ */
+
+/**
+ * @swagger
+ * /files/folder:
+ *   post:
+ *     tags: [Files]
+ *     summary: Создать папку
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string }
+ *               parentId: { type: string, nullable: true }
+ *     responses:
+ *       201:
+ *         description: Создано
+ */
+
+/**
+ * @swagger
+ * /files/upload:
+ *   post:
+ *     tags: [Files]
+ *     summary: Загрузить файл
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               parentId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: Загружено
+ */
+
+/**
+ * @swagger
+ * /files/{id}/move:
+ *   put:
+ *     tags: [Files]
+ *     summary: Переместить в другую папку
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parentId: { type: string, nullable: true }
+ *     responses:
+ *       200:
+ *         description: ОК
+ */
+
+/**
+ * @swagger
+ * /files/{id}/content:
+ *   get:
+ *     tags: [Files]
+ *     summary: Получить бинарное содержимое файла
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Бинарные данные
+ */
+
+/**
+ * @swagger
+ * /files/{id}/text:
+ *   get:
+ *     tags: [Files]
+ *     summary: Прочитать текстовую версию файла (последняя ревизия)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: ОК
+ *   post:
+ *     tags: [Files]
+ *     summary: Сохранить текстовую ревизию
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content: { type: string }
+ *     responses:
+ *       200:
+ *         description: ОК
+ */
+
+/**
+ * @swagger
+ * /files/{id}:
+ *   delete:
+ *     tags: [Files]
+ *     summary: Удалить файл/папку
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: ОК
+ */
+
+
 // -------------------------------------------------
 // Helpers
 // -------------------------------------------------

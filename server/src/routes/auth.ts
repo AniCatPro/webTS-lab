@@ -5,6 +5,60 @@ import { z } from 'zod';
 import { signToken, setAuthCookie, verifyToken } from '../lib/auth.js';
 import { authGuard } from '../middleware/authGuard.js';
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: Авторизация
+ */
+
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Вход
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               password: { type: string, minLength: 6 }
+ *     responses:
+ *       200:
+ *         description: Успешный вход, токен устанавливается в cookie
+ *       401:
+ *         description: Неверные учетные данные
+ */
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Текущий пользователь (по cookie)
+ *     responses:
+ *       200:
+ *         description: Пользователь
+ *       401:
+ *         description: Не авторизован
+ */
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Выход (очистка cookie)
+ *     responses:
+ *       200:
+ *         description: ОК
+ */
+
 export const authRouter = Router();
 
 // схема валидации тела логина

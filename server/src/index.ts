@@ -23,6 +23,12 @@ const allowLocalhost = [
     /^http:\/\/127\.0\.0\.1(?::\d+)?$/,
 ];
 
+// Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// JSON спецификация
+app.get('/api/anicatpro.json', (_req, res) => res.json(swaggerSpec));
+
 // CORS middleware
 app.use(cors({
     origin(origin, cb) {
