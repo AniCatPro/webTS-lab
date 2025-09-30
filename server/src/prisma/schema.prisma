@@ -34,6 +34,8 @@ model User {
   updatedAt     DateTime @default(now()) @updatedAt  // ← ДОБАВЛЕН default(now())
   revisions     TextRevision[]
   auditLogs     AuditLog[] @relation("AuditActor")
+  files         File[]       @relation("UserFiles")
+  auditOwned    AuditLog[]   @relation("AuditOwner")
 }
 
 model File {
@@ -48,6 +50,8 @@ model File {
   url           String?
   size          Int?
   createdAt     DateTime       @default(now())
+  ownerId       String
+  owner         User           @relation("UserFiles", fields: [ownerId], references: [id])
   updatedAt     DateTime       @updatedAt
 
   textRevisions TextRevision[]
@@ -56,7 +60,8 @@ model File {
 
   @@index([parentId])
   @@index([type])
-  @@unique([parentId, name, kind], map: "uniq_parent_name_kind")
+  @@index([ownerId, parentId])
+  @@unique([ownerId, parentId, name, kind], map: "uniq_owner_parent_name_kind")
 }
 
 model TextRevision {
@@ -86,10 +91,13 @@ model AuditLog {
   // снапшоты на момент события
   targetType  String   // 'file' | 'folder' | 'user' | 'system'
   targetName  String?
+  ownerId     String?
+  owner       User?    @relation("AuditOwner", fields: [ownerId], references: [id])
 
   details     Json?
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
   @@index([type])
+  @@index([ownerId, createdAt])
 }

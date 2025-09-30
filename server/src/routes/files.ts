@@ -268,10 +268,14 @@ filesRouter.get('/', async (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q : undefined;
     const type = typeof req.query.type === 'string' ? (req.query.type as any) : undefined;
 
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+
     const where: any = {};
     if (parentId !== undefined) where.parentId = parentId; // null пройдёт как есть
     if (q) where.name = { contains: q, mode: 'insensitive' };
     if (type) where.type = type;
+    where.ownerId = ownerId;
 
     const [total, data] = await Promise.all([
         prisma.file.count({ where }),
@@ -291,7 +295,9 @@ filesRouter.get('/', async (req, res) => {
  * Метаданные файла/папки
  */
 filesRouter.get('/:id', async (req, res) => {
-    const file = await prisma.file.findUnique({ where: { id: req.params.id } });
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+    const file = await prisma.file.findFirst({ where: { id: req.params.id, ownerId } });
     if (!file) return res.status(404).json({ message: 'Not found' });
     res.json(file);
 });
@@ -301,7 +307,9 @@ filesRouter.get('/:id', async (req, res) => {
  * Получить содержимое текстового файла
  */
 filesRouter.get('/:id/text', async (req, res) => {
-    const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+    const f = await prisma.file.findFirst({ where: { id: req.params.id, ownerId } });
     if (!f) return res.status(404).json({ message: 'Not found' });
     if (f.kind !== 'file' || !isTextLike(f.mimeType)) {
         return res.status(400).json({ message: 'Not a text file' });
@@ -318,7 +326,9 @@ filesRouter.get('/:id/text', async (req, res) => {
  * Сохранить новую версию текста
  */
 filesRouter.post('/:id/text', async (req, res) => {
-    const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+    const f = await prisma.file.findFirst({ where: { id: req.params.id, ownerId } });
     if (!f) return res.status(404).json({ message: 'Not found' });
     if (f.kind !== 'file' || !isTextLike(f.mimeType)) {
         return res.status(400).json({ message: 'Not a text file' });
@@ -342,6 +352,7 @@ filesRouter.post('/:id/text', async (req, res) => {
     if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
     await writeAudit('file.text.update', {
       actorId,
+      ownerId,
       targetId: f.id,
       targetType: 'file',
       targetName: f.name,
@@ -356,7 +367,9 @@ filesRouter.post('/:id/text', async (req, res) => {
  * Защищённая выдача бинарного содержимого (blob)
  */
 filesRouter.get('/:id/content', async (req, res) => {
-    const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+    const f = await prisma.file.findFirst({ where: { id: req.params.id, ownerId } });
     if (!f) return res.status(404).json({ message: 'Not found' });
     if (f.kind !== 'file' || !f.url) return res.status(400).json({ message: 'No content' });
 
@@ -386,14 +399,17 @@ filesRouter.get('/:id/content', async (req, res) => {
 filesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No file' });
 
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+
     const parentId = normalizeParentId(req.body?.parentId);
 
-  // Normalize original filename: browsers send UTF-8, but Multer may expose it as latin1.
-  const rawOriginal = req.file.originalname || 'file';
-  const originalName = Buffer.from(rawOriginal, 'latin1').toString('utf8');
+    // Normalize original filename: browsers send UTF-8, but Multer may expose it as latin1.
+    const rawOriginal = req.file.originalname || 'file';
+    const originalName = Buffer.from(rawOriginal, 'latin1').toString('utf8');
 
     if (parentId) {
-        const parent = await prisma.file.findUnique({ where: { id: parentId } });
+        const parent = await prisma.file.findFirst({ where: { id: parentId, ownerId } });
         if (!parent || parent.kind !== 'folder') {
             return res.status(400).json({ message: 'Invalid parentId' });
         }
@@ -421,6 +437,7 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
             parentId: parentId ?? null,
             url,
             size: req.file.size,
+            ownerId,
         },
     });
 
@@ -428,6 +445,7 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
     await writeAudit('file.upload', {
       actorId,
+      ownerId,
       targetId: created.id,
       targetType: 'file',
       targetName: created.name,
@@ -443,12 +461,14 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
  * body: { name: string, parentId?: string|null }
  */
 filesRouter.post('/folder', async (req, res) => {
+  const ownerId = req.user?.id;
+  if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
   const name = String(req.body?.name || '').trim();
   if (!name) return res.status(400).json({ message: 'Name is required' });
 
   const parentId = normalizeParentId(req.body?.parentId);
   if (parentId) {
-    const parent = await prisma.file.findUnique({ where: { id: parentId } });
+    const parent = await prisma.file.findFirst({ where: { id: parentId, ownerId } });
     if (!parent || parent.kind !== 'folder') {
       return res.status(400).json({ message: 'Invalid parentId' });
     }
@@ -460,6 +480,7 @@ filesRouter.post('/folder', async (req, res) => {
       kind: 'folder',
       parentId: parentId ?? null,
       name: { equals: name, mode: 'insensitive' },
+      ownerId,
     },
     select: { id: true },
   });
@@ -476,6 +497,7 @@ filesRouter.post('/folder', async (req, res) => {
       parentId: parentId ?? null,
       url: null,
       size: null,
+      ownerId,
     },
   });
 
@@ -483,6 +505,7 @@ filesRouter.post('/folder', async (req, res) => {
   if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
   await writeAudit('file.create', {
     actorId,
+    ownerId,
     targetId: folder.id,
     targetType: 'folder',
     targetName: folder.name,
@@ -498,12 +521,14 @@ filesRouter.post('/folder', async (req, res) => {
  * body: { parentId?: string|null }
  */
 filesRouter.put('/:id/move', async (req, res) => {
-  const f = await prisma.file.findUnique({ where: { id: req.params.id } });
+  const ownerId = req.user?.id;
+  if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+  const f = await prisma.file.findFirst({ where: { id: req.params.id, ownerId } });
   if (!f) return res.status(404).json({ message: 'Not found' });
 
   const parentId = normalizeParentId(req.body?.parentId);
   if (parentId) {
-    const parent = await prisma.file.findUnique({ where: { id: parentId } });
+    const parent = await prisma.file.findFirst({ where: { id: parentId, ownerId } });
     if (!parent || parent.kind !== 'folder') {
       return res.status(400).json({ message: 'Invalid parentId' });
     }
@@ -525,6 +550,7 @@ filesRouter.put('/:id/move', async (req, res) => {
   if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
   await writeAudit('file.move', {
     actorId,
+    ownerId,
     targetId: updated.id,
     targetType: updated.kind === 'folder' ? 'folder' : 'file',
     targetName: updated.name,
@@ -538,8 +564,10 @@ filesRouter.put('/:id/move', async (req, res) => {
  * DELETE /api/files/:id
  */
 filesRouter.delete('/:id', async (req, res) => {
-  const f = await prisma.file.findUnique({
-    where: { id: req.params.id },
+  const ownerId = req.user?.id;
+  if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
+  const f = await prisma.file.findFirst({
+    where: { id: req.params.id, ownerId },
     include: { children: true },
   });
   if (!f) return res.status(404).json({ message: 'Not found' });
@@ -553,6 +581,7 @@ filesRouter.delete('/:id', async (req, res) => {
     const actorId = req.user?.id ?? null;
     await writeAudit('file.delete', {
       actorId,
+      ownerId,
       targetId: f.id,
       targetType: f.kind === 'folder' ? 'folder' : 'file',
       targetName: f.name,
