@@ -1,76 +1,119 @@
 <template>
   <section class="section">
-    <h1 class="title">Админ-панель</h1>
-    <p class="subtitle">Последние изменения текстовых файлов</p>
+    <div class="container">
+      <div class="level mb-4">
+        <div class="level-left">
+          <h1 class="title">Админ-панель</h1>
+        </div>
+        <div class="level-right">
+          <div class="buttons">
+            <!-- Кнопка на Swagger UI -->
+            <a
+                :href="apiDocsUrl"
+                target="_blank"
+                rel="noopener"
+                class="button is-link is-light"
+                title="Открыть документацию REST API"
+            >
+              REST API
+            </a>
+            <button class="button" :class="{ 'is-loading': loading }" @click="load">
+              Обновить
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <progress v-if="loading" class="progress is-small is-primary" max="100">Загрузка…</progress>
-    <p v-if="error" class="notification is-danger">{{ error }}</p>
+      <div class="box">
+        <h2 class="subtitle">Последние текстовые правки</h2>
 
-    <table v-if="!loading && revisions.length" class="table is-fullwidth is-striped">
-      <thead>
-      <tr>
-        <th>Дата</th>
-        <th>Файл</th>
-        <th>Автор</th>
-        <th>Фрагмент</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="r in revisions" :key="r.id">
-        <td>{{ new Date(r.createdAt).toLocaleString() }}</td>
-        <td>
-          <router-link :to="r.file.kind==='folder' ? {name:'folder', params:{id:r.file.id}} : {name:'home'}">
-            {{ r.file.name }}
-          </router-link>
-        </td>
-        <td>{{ r.author.email }}</td>
-        <td><pre style="white-space: pre-wrap; max-width: 560px">{{ r.preview }}</pre></td>
-      </tr>
-      </tbody>
-    </table>
+        <div v-if="error" class="notification is-danger is-light">
+          {{ error }}
+        </div>
 
-    <p v-if="!loading && !revisions.length" class="has-text-grey">Пока нет изменений.</p>
+        <table class="table is-fullwidth is-striped" v-if="items.length">
+          <thead>
+          <tr>
+            <th>Когда</th>
+            <th>Файл</th>
+            <th>Автор</th>
+            <th>Фрагмент</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="r in items" :key="r.id">
+            <td>{{ prettyDate(r.createdAt) }}</td>
+            <td>{{ r.file?.name }}</td>
+            <td>{{ r.author?.email || '—' }}</td>
+            <td class="is-clipped">{{ snippet(r.content) }}</td>
+          </tr>
+          </tbody>
+        </table>
+
+        <p v-else-if="!loading" class="has-text-grey">Записей нет.</p>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, ref, computed } from 'vue';
 import { http } from '@/api/http';
 
-interface RevisionDto {
+type Revision = {
   id: string;
+  content: string;
   createdAt: string;
-  content?: string; // может отсутствовать, если вы решите не отдавать полный текст
-  file: { id: string; name: string; kind: 'file' | 'folder' };
-  author: { id: string; email: string };
-}
+  file?: { id: string; name: string } | null;
+  author?: { id: string; email: string } | null;
+};
 
-const revisions = ref<Array<RevisionDto & { preview: string }>>([]);
+const items = ref<Revision[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
-const router = useRouter();
+
+// Строим ссылку на Swagger UI: .../api/docs/#/
+// Если VITE_API_BASE абсолютный — берём origin из него,
+// иначе жёстко указываем :4000 на текущем хосте/протоколе.
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '/api').toString();
+const apiOrigin = /^https?:\/\//.test(API_BASE)
+    ? new URL(API_BASE).origin
+    : `${window.location.protocol}//${window.location.hostname}:4000`;
+
+const apiDocsUrl = computed(() => `${apiOrigin}/api/docs/#/`);
 
 async function load() {
   try {
     loading.value = true;
     error.value = null;
-    const { data } = await http.get<RevisionDto[]>('/admin/revisions');
-    revisions.value = data.map(r => ({
-      ...r,
-      preview: (r as any).content ? (r as any).content.slice(0, 180) + ((r as any).content.length > 180 ? '…' : '') : '[без содержимого]'
-    }));
+    // эндпоинт из бэкенда: GET /api/admin/revisions (Bearer)
+    const res = await http.get('/admin/revisions');
+    items.value = res.data || [];
   } catch (e: any) {
-    const status = e?.response?.status;
-    if (status === 401) {
-      router.push({ name: 'login', query: { redirect: '/#/admin' } });
-      return;
-    }
-    error.value = e?.response?.data?.message || e.message;
+    error.value = e?.response?.data?.message || e?.message || String(e);
   } finally {
     loading.value = false;
   }
 }
 
+function prettyDate(v?: string) {
+  if (!v) return '—';
+  return new Date(v).toLocaleString();
+}
+function snippet(s: string, n = 140) {
+  if (!s) return '';
+  const one = s.replace(/\s+/g, ' ').trim();
+  return one.length > n ? one.slice(0, n - 1) + '…' : one;
+}
+
 onMounted(load);
 </script>
+
+<style scoped>
+.is-clipped {
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>
