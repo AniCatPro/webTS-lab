@@ -2,8 +2,9 @@
   <div>
     <nav class="navbar is-light" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <router-link class="navbar-item" :to="{ name: 'home' }">
-          <strong>FileManager</strong>
+        <router-link class="navbar-item is-flex is-align-items-center" :to="{ name: 'home' }">
+          <img src="@/assets/logo.png" alt="Logo" class="logo" />
+          <strong class="ml-2">FileManager</strong>
         </router-link>
         <a role="button" class="navbar-burger" :class="{ 'is-active': burger }" @click="burger = !burger"
            aria-label="menu" aria-expanded="false" data-target="navMenu">
