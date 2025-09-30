@@ -494,22 +494,24 @@ function prettyType(it: FsEntry) {
 }
 .empty-drop {
   min-height: 220px;
-  border: 2px dashed #d6d6d6;
+  border: 2px dashed var(--border);
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #fafafa;
-  color: #666;
+  background: var(--surface);     /* раньше было #fafafa */
+  color: var(--text-muted);
   margin-top: 12px;
 }
+
 .empty-drop.is-over {
-  border-color: #409eff;
-  background: rgba(64,158,255,0.06);
+  border-color: var(--accent);
+  background: rgba(88,166,255,0.08); /* мягкая подсветка */
 }
+
 .empty-drop .inner { text-align: center; padding: 24px; }
 .empty-drop .icon { font-size: 40px; margin-bottom: 8px; }
-.empty-drop .title { font-weight: 700; margin-bottom: 4px; }
-.empty-drop .hint { font-size: .95rem; color: #888; }
+.empty-drop .title { font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.empty-drop .hint { font-size: .95rem; color: var(--text-muted); }
 
 .folder-drop-overlay {
   position: fixed;
@@ -524,13 +526,23 @@ function prettyType(it: FsEntry) {
   min-width: 360px;
   max-width: 560px;
   padding: 24px 28px;
-  background: #fff;
-  border: 2px dashed #409eff;
+  background: var(--surface);
+  border: 2px dashed var(--accent);
   border-radius: 14px;
   text-align: center;
   box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  color: var(--text);
 }
+
 .folder-drop-overlay .icon { font-size: 42px; margin-bottom: 8px; }
 .folder-drop-overlay .title { font-weight: 700; margin-bottom: 4px; }
-.folder-drop-overlay .hint { color: #666; }
+.folder-drop-overlay .hint { color: var(--text-muted); }
+
+/* Мягкая подсветка drop-цели в тёмной теме */
+html.theme-dark .is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  background: rgba(88,166,255,0.10);
+  border-radius: 10px;
+}
 </style>

@@ -243,7 +243,16 @@ a { color: var(--link); }
   outline: 2px dashed var(--accent);
   background: rgba(88,166,255,0.08);
 }
+
 .text-muted { color: var(--text-muted); }
+
+/* ---------- Заголовки ---------- */
+html.theme-dark .title {
+  color: var(--text);
+}
+html.theme-dark .subtitle {
+  color: var(--text-muted);
+}
 
 /* Theme toggle (icon variant) */
 .theme-toggle-icons {
@@ -287,4 +296,82 @@ html.theme-dark .theme-toggle-icons .tt-btn:hover {
 /* чуть уменьшить отступы справа в navbar */
 .navbar-end .navbar-item .theme-toggle-icons { margin-right: .25rem; }
 
+/* ===== Модалки: мягкие тёмные фоны/бордеры/текст ===== */
+.modal-card,
+.modal-card-head,
+.modal-card-body,
+.modal-card-foot {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.modal-card-head,
+.modal-card-foot {
+  border-bottom: 1px solid var(--border);
+}
+.modal-card-foot { border-top: 1px solid var(--border); }
+
+/* Заголовок и крестик */
+.modal-card-title { color: var(--text); }
+.modal .delete {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.modal .delete:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+/* Фон под модалкой — темнее в night */
+html.theme-dark .modal-background {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Элементы форм внутри модалок */
+.modal-card .input,
+.modal-card .textarea,
+.modal-card .select select {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.modal-card .input::placeholder,
+.modal-card .textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Радио/чекбоксы читаемее в тёмной теме */
+html.theme-dark input[type="radio"],
+html.theme-dark input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* Меню/крошки в MoveDialog */
+.modal-card .menu,
+.modal-card .menu-list,
+.modal-card .breadcrumb,
+.modal-card .box {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.modal-card .menu-list a:hover {
+  background: var(--surface-2);
+}
+
+/* Кнопки в модалках — мягкие */
+html.theme-dark .modal-card .button.is-light {
+  background: #2d333b;
+  border-color: var(--border);
+  color: var(--text);
+}
+html.theme-dark .modal-card .button.is-light:hover {
+  background: #262c34;
+}
+
+/* DnD: общий оверлей чуть темнее в night */
+html.theme-dark .folder-drop-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
 </style>
