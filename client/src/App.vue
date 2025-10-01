@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="layout">
     <nav
         class="navbar"
         :class="effectiveTheme==='dark' ? 'is-dark' : 'is-light'"
@@ -82,8 +82,17 @@
       </div>
     </nav>
 
-    <router-view />
-    <UploadToasts />
+    <main class="page-body">
+      <router-view />
+      <UploadToasts />
+    </main>
+
+    <footer class="site-footer">
+      <img :src="avatarSrc" alt="Avatar" class="avatar" />
+      <span>
+        <a href="https://github.com/AniCatPro" target="_blank" rel="noopener noreferrer">@anicatpro</a> — Павел Афанасьев 2025. Проект выполнен в рамках лабораторной работы по предмету "Web разработка".
+      </span>
+    </footer>
   </div>
 </template>
 
@@ -98,6 +107,7 @@ import { useTheme } from '@/stores/theme';
 // client/src/assets/logo-night.png (ночной)
 import logoLight from '@/assets/logo.png';
 import logoDark from '@/assets/logo-night.png';
+import avatarSrc from '@/assets/avatar.jpeg';
 
 const burger = ref(false);
 
@@ -153,8 +163,40 @@ body {
 /* ---------- NAVBAR ---------- */
 .navbar.is-dark { background: #161b22; }
 .navbar.is-light { background: #f6f8fa; }
-html.theme-dark .navbar-item,
-html.theme-dark .navbar-link { color: var(--text); }
+
+/* Navbar menu panel + items (Bulma overrides) */
+.navbar-menu {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border);
+}
+html.theme-dark .navbar-menu {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border);
+}
+.navbar-item,
+.navbar-link {
+  color: var(--text) !important;
+}
+.navbar-item:hover,
+.navbar-link:hover {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+}
+/* burger icon color */
+.navbar-burger {
+  color: var(--text) !important;
+}
+.navbar-burger span {
+  background-color: var(--text) !important;
+}
+/* dropdown (desktop) */
+.navbar-dropdown {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.navbar-dropdown a.navbar-item:hover {
+  background: var(--surface-2) !important;
+}
 
 /* логотип */
 .logo { width: 28px; height: 28px; }
@@ -269,7 +311,19 @@ a { color: var(--link); }
   border-color: #dc3545 !important;
   color: #fff !important;
 }
+
 .fm-context .button.is-danger:hover { filter: brightness(0.95); }
+
+/* В тёмной теме перекрашиваем кнопки контекстного меню */
+html.theme-dark .fm-context .button {
+  background: #2d333b !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+html.theme-dark .fm-context .button:hover {
+  background: #262c34 !important;
+}
 
 /* Элементы-строки (если есть не-кнопочные пункты) */
 .fm-context-item { color: var(--text) !important; }
@@ -425,5 +479,46 @@ html.theme-dark .modal-card .button.is-light:hover {
 /* DnD: общий оверлей чуть темнее в night */
 html.theme-dark .folder-drop-overlay {
   background: rgba(0, 0, 0, 0.45);
+}
+
+/* === Layout & Footer === */
+.layout {
+  min-height: 100dvh; /* поддержка мобильных браузеров */
+  display: flex;
+  flex-direction: column;
+}
+
+.page-body {
+  flex: 1 0 auto; /* контент растягивается */
+}
+
+.site-footer {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.site-footer a {
+  color: var(--link);
+  text-decoration: none;
+  margin-left: .35rem;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
+.site-footer .avatar {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 8px;
+  display: inline-block; /* ensure sizing applies */
 }
 </style>
