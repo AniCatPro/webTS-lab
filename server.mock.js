@@ -1,4 +1,3 @@
-// server.mock.js
 const jsonServer = require('json-server');
 const path = require('path');
 const server = jsonServer.create();
@@ -10,7 +9,6 @@ server.use(middlewares);
 server.use(jsonServer.bodyParser);
 
 
-// Normalized filtering for /api/files
 server.get('/api/files', (req, res, next) => {
     const db = router.db; // lowdb instance
     const { parentId, q, type, page = 1, pageSize = 20 } = req.query;
