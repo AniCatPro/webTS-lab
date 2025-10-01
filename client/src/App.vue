@@ -222,13 +222,65 @@ a { color: var(--link); }
   color: var(--text);
 }
 
-/* ---------- Контекстное меню ---------- */
+/* === Контекстное меню: тёмный/светлый фон и читаемые кнопки === */
 .fm-context {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--surface) !important; /* обязательно переопределяем Bulma */
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
+  z-index: 1000;
 }
-.fm-context-item:hover { background: var(--surface-2); }
+
+/* Если используешь контейнер с действиями */
+.fm-context .ctx-actions { display: flex; gap: .5rem; }
+
+/* БАЗА для всех кнопок в меню (кроме спец-цветов) */
+.fm-context .button:not(.is-link):not(.is-danger):not(.is-dark) {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* На всякий случай гасим "is-white", если он где-то стоит в разметке */
+.fm-context .button.is-white {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Hover для базовых кнопок */
+.fm-context .button:not(.is-link):not(.is-danger):not(.is-dark):hover {
+  background: var(--surface) !important;
+  filter: brightness(0.98);
+}
+
+/* Ссылочная/акцентная */
+.fm-context .button.is-link {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+.fm-context .button.is-link:hover { filter: brightness(0.95); }
+
+/* Опасная (Удалить) */
+.fm-context .button.is-danger {
+  background: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+}
+.fm-context .button.is-danger:hover { filter: brightness(0.95); }
+
+/* Элементы-строки (если есть не-кнопочные пункты) */
+.fm-context-item { color: var(--text) !important; }
+.fm-context-item:hover { background: var(--surface-2) !important; }
+
+/* Фокус */
+.fm-context .button:focus-visible,
+.fm-context-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* ---------- Карточки файлов ---------- */
 .drive-card {

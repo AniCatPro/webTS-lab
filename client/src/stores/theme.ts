@@ -5,47 +5,67 @@ import { ref, computed } from "vue";
 type ThemeMode = "auto" | "light" | "dark";
 
 export const useTheme = defineStore("theme", () => {
-    // хранится режим, выбранный пользователем
     const mode = ref<ThemeMode>("auto");
+    const systemDark = ref(false);
+    let mql: MediaQueryList | null = null;
+    let mqlHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
-    // вычисляемый: какой реально сейчас режим (light/dark)
-    const effective = computed(() => {
-        if (mode.value === "auto") {
-            return window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-        }
-        return mode.value;
+    const effective = computed<"light" | "dark">(() => {
+        return mode.value === "auto" ? (systemDark.value ? "dark" : "light") : mode.value;
     });
-
-    function setMode(m: ThemeMode) {
-        mode.value = m;
-        apply();
-        localStorage.setItem("theme-mode", m);
-    }
 
     function apply() {
         const html = document.documentElement;
-        if (effective.value === "dark") {
-            html.classList.add("theme-dark");
-        } else {
-            html.classList.remove("theme-dark");
-        }
+        html.classList.toggle("theme-dark", effective.value === "dark");
     }
 
-    function init() {
-        // пробуем из localStorage
-        const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
-        if (saved) mode.value = saved;
-
-        // слушаем изменения системной темы
-        const media = window.matchMedia("(prefers-color-scheme: dark)");
-        media.addEventListener("change", () => {
-            if (mode.value === "auto") apply();
-        });
-
+    function setMode(m: ThemeMode) {
+        if (mode.value === m) return;
+        mode.value = m;
+        localStorage.setItem("theme-mode", m);
         apply();
     }
 
-    return { mode, effective, setMode, init };
+    function init() {
+        // 1) восстановить выбранный режим
+        const saved = (localStorage.getItem("theme-mode") as ThemeMode | null);
+        if (saved === "auto" || saved === "light" || saved === "dark") {
+            mode.value = saved;
+        }
+
+        // 2) подписка на системную тему
+        mql = window.matchMedia("(prefers-color-scheme: dark)");
+        systemDark.value = !!mql.matches;
+
+        mqlHandler = (e: MediaQueryListEvent) => {
+            systemDark.value = e.matches;   // <-- триггерит пересчёт `effective`
+            if (mode.value === "auto") apply();
+        };
+
+        if ("addEventListener" in mql) {
+            mql.addEventListener("change", mqlHandler);
+        } else {
+            // старый Safari
+            // @ts-ignore
+            mql.addListener(mqlHandler);
+        }
+
+        // 3) применить текущую тему к DOM
+        apply();
+    }
+
+    // на всякий случай, если где-то захочешь отписываться (HMR и т.п.)
+    function dispose() {
+        if (!mql || !mqlHandler) return;
+        if ("removeEventListener" in mql) {
+            mql.removeEventListener("change", mqlHandler);
+        } else {
+            // @ts-ignore
+            mql.removeListener(mqlHandler);
+        }
+        mql = null;
+        mqlHandler = null;
+    }
+
+    return { mode, effective, setMode, init, dispose };
 });
