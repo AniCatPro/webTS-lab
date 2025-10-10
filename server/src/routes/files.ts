@@ -201,9 +201,6 @@ import { writeAudit } from '../lib/audit.js';
  */
 
 
-// -------------------------------------------------
-// Helpers
-// -------------------------------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STATIC_DIR = path.join(__dirname, '..', '..', 'static');
@@ -234,9 +231,9 @@ function toFileType(
 }
 
 function normalizeParentId(raw: unknown): string | null | undefined {
-    if (raw === undefined) return undefined; // корень
+    if (raw === undefined) return undefined;
     const s = String(raw);
-    if (s === '' || s === 'null' || s === 'undefined') return null; // явно корневые
+    if (s === '' || s === 'null' || s === 'undefined') return null;
     return s;
 }
 
@@ -249,12 +246,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// -------------------------------------------------
-// Router
-// -------------------------------------------------
 export const filesRouter = Router();
 
-// закрываем весь роутер авторизацией
 filesRouter.use(authGuard);
 
 /**
@@ -272,7 +265,7 @@ filesRouter.get('/', async (req, res) => {
     if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
 
     const where: any = {};
-    if (parentId !== undefined) where.parentId = parentId; // null пройдёт как есть
+    if (parentId !== undefined) where.parentId = parentId;
     if (q) where.name = { contains: q, mode: 'insensitive' };
     if (type) where.type = type;
     where.ownerId = ownerId;
@@ -339,7 +332,6 @@ filesRouter.post('/:id/text', async (req, res) => {
         return res.status(400).json({ message: 'Invalid content' });
     }
 
-    // автор — текущий аутентифицированный пользователь
     const authorId = req.user?.id;
     if (!authorId) {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -352,7 +344,6 @@ filesRouter.post('/:id/text', async (req, res) => {
     if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
     await writeAudit('file.text.update', {
       actorId,
-      ownerId,
       targetId: f.id,
       targetType: 'file',
       targetName: f.name,
@@ -376,12 +367,11 @@ filesRouter.get('/:id/content', async (req, res) => {
     const idx = f.url.indexOf('/static/');
     if (idx === -1) return res.status(400).json({ message: 'External content not allowed' });
 
-    const relEncoded = f.url.slice(idx + '/static/'.length); // e.g. seed/Nextcloud%20intro.mp4
-    const rel = decodeURIComponent(relEncoded);              // -> seed/Nextcloud intro.mp4
+    const relEncoded = f.url.slice(idx + '/static/'.length);
+    const rel = decodeURIComponent(relEncoded);
     const abs = path.join(STATIC_DIR, rel);
     if (!fs.existsSync(abs)) return res.status(404).json({ message: 'File not found' });
 
-    // тип ставим заранее
     if (f.mimeType) res.type(f.mimeType);
 
     send(req, abs)
@@ -403,8 +393,6 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (!ownerId) return res.status(401).json({ message: 'Unauthorized' });
 
     const parentId = normalizeParentId(req.body?.parentId);
-
-    // Normalize original filename: browsers send UTF-8, but Multer may expose it as latin1.
     const rawOriginal = req.file.originalname || 'file';
     const originalName = Buffer.from(rawOriginal, 'latin1').toString('utf8');
 
@@ -445,7 +433,6 @@ filesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
     await writeAudit('file.upload', {
       actorId,
-      ownerId,
       targetId: created.id,
       targetType: 'file',
       targetName: created.name,
@@ -474,7 +461,6 @@ filesRouter.post('/folder', async (req, res) => {
     }
   }
 
-  // Проверка на дубликаты (регистронезависимо в пределах одного родителя)
   const existing = await prisma.file.findFirst({
     where: {
       kind: 'folder',
@@ -505,7 +491,6 @@ filesRouter.post('/folder', async (req, res) => {
   if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
   await writeAudit('file.create', {
     actorId,
-    ownerId,
     targetId: folder.id,
     targetType: 'folder',
     targetName: folder.name,
@@ -532,9 +517,6 @@ filesRouter.put('/:id/move', async (req, res) => {
     if (!parent || parent.kind !== 'folder') {
       return res.status(400).json({ message: 'Invalid parentId' });
     }
-
-    // нельзя переместить папку внутрь самой себя (и, по-хорошему, внутрь своих потомков —
-    // этот кейс можно обработать отдельно при желании)
     if (f.id === parentId) {
       return res.status(400).json({ message: 'Cannot move into itself' });
     }
@@ -550,7 +532,6 @@ filesRouter.put('/:id/move', async (req, res) => {
   if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
   await writeAudit('file.move', {
     actorId,
-    ownerId,
     targetId: updated.id,
     targetType: updated.kind === 'folder' ? 'folder' : 'file',
     targetName: updated.name,
@@ -575,24 +556,18 @@ filesRouter.delete('/:id', async (req, res) => {
   if (f.kind === 'folder' && f.children.length > 0) {
     return res.status(400).json({ message: 'Folder is not empty' });
   }
-
-  // 1) Пишем аудит ДО удаления (чтобы target ссылался на существующую запись)
   try {
     const actorId = req.user?.id ?? null;
     await writeAudit('file.delete', {
       actorId,
-      ownerId,
       targetId: f.id,
       targetType: f.kind === 'folder' ? 'folder' : 'file',
       targetName: f.name,
       details: { parentId: f.parentId ?? null, size: f.size ?? null, mimeType: f.mimeType ?? null },
     });
   } catch (e) {
-    // не срываем удаление из-за проблем с логированием
     console.warn('audit log (file.delete) failed:', e);
   }
-
-  // 2) Удаляем физический файл, если он был загружен через /uploads
   if (f.kind === 'file' && f.url && f.url.includes('/static/uploads/')) {
     const urlPath = f.url.split('/static/')[1];
     const abs = path.join(STATIC_DIR, urlPath);
@@ -602,8 +577,6 @@ filesRouter.delete('/:id', async (req, res) => {
       console.warn('unlink failed', e);
     }
   }
-
-  // 3) Удаляем запись из БД
   await prisma.file.delete({ where: { id: f.id } });
 
   res.json({ ok: true });

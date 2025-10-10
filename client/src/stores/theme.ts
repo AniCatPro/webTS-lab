@@ -1,4 +1,3 @@
-// client/src/stores/theme.ts
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 
@@ -27,34 +26,27 @@ export const useTheme = defineStore("theme", () => {
     }
 
     function init() {
-        // 1) восстановить выбранный режим
         const saved = (localStorage.getItem("theme-mode") as ThemeMode | null);
         if (saved === "auto" || saved === "light" || saved === "dark") {
             mode.value = saved;
         }
-
-        // 2) подписка на системную тему
         mql = window.matchMedia("(prefers-color-scheme: dark)");
         systemDark.value = !!mql.matches;
 
         mqlHandler = (e: MediaQueryListEvent) => {
-            systemDark.value = e.matches;   // <-- триггерит пересчёт `effective`
+            systemDark.value = e.matches;
             if (mode.value === "auto") apply();
         };
 
         if ("addEventListener" in mql) {
             mql.addEventListener("change", mqlHandler);
         } else {
-            // старый Safari
             // @ts-ignore
             mql.addListener(mqlHandler);
         }
-
-        // 3) применить текущую тему к DOM
         apply();
     }
 
-    // на всякий случай, если где-то захочешь отписываться (HMR и т.п.)
     function dispose() {
         if (!mql || !mqlHandler) return;
         if ("removeEventListener" in mql) {

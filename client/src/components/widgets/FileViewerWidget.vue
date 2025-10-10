@@ -61,7 +61,6 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
 
-// blob URL для медиа
 const objectUrl = ref<string | null>(null);
 function revoke() {
   if (objectUrl.value) {

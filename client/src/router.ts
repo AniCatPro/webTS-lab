@@ -19,24 +19,19 @@ const router = createRouter({
     routes,
 });
 
-// чтобы не дергать /me бесконечно
 let triedFetchMe = false;
 
 router.beforeEach(async (to) => {
     const auth = useAuth();
 
-    // если уже авторизован и идем на /login — отправим на главную
     if (to.name === "login" && auth.user) {
         return { name: "home" };
     }
 
-    // если маршрут не требует авторизации — пускаем
     if (!to.meta.requiresAuth) return true;
 
-    // если в сторе есть пользователь — пускаем
     if (auth.user) return true;
 
-    // пробуем один раз подтянуть с сервера
     if (!triedFetchMe) {
         triedFetchMe = true;
         try {
@@ -47,7 +42,6 @@ router.beforeEach(async (to) => {
         if (auth.user) return true;
     }
 
-    // не авторизован — на логин
     return { name: "login", query: { redirect: to.fullPath } };
 });
 

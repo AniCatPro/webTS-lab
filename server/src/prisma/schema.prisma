@@ -55,7 +55,7 @@ model File {
   updatedAt     DateTime       @updatedAt
 
   textRevisions TextRevision[]
-  // связь с AuditLog как "цель"
+
   auditLogs     AuditLog[]     @relation("AuditTarget")
 
   @@index([parentId])
@@ -77,18 +77,18 @@ model TextRevision {
 model AuditLog {
   id          String   @id @default(cuid())
 
-  // тип события: 'file.create' | 'file.upload' | 'file.move' | 'file.delete' | 'file.text.update' | 'auth.login' | 'auth.logout' | 'user.create' ...
+
   type        String
 
-  // актор события (пользователь)
+
   actorId     String?
   actor       User?    @relation("AuditActor", fields: [actorId], references: [id])
 
-  // целевой объект (обычно File), делаем опциональным
+
   targetId    String?
   target      File?    @relation("AuditTarget", fields: [targetId], references: [id])
 
-  // снапшоты на момент события
+
   targetType  String   // 'file' | 'folder' | 'user' | 'system'
   targetName  String?
   ownerId     String?

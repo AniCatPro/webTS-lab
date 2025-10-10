@@ -85,7 +85,6 @@ onMounted(async () => {
   cursor: default;
 }
 .drive-card:hover {
-  /* мягкая тень, одинаково смотрится в обеих темах */
   box-shadow: 0 6px 16px rgba(0,0,0,.12);
   border-color: var(--border);
 }
@@ -100,7 +99,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* тонкая внутренняя рамка, чтобы белые превью не «резали глаз» */
   outline: 1px solid var(--border);
   outline-offset: 0;
 }

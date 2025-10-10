@@ -30,7 +30,6 @@ export const useAuth = defineStore('auth', {
                 await this.fetchMe();
 
                 if (this.user) {
-                    // если был redirect=..., отправляем туда, иначе на главную
                     const redirect = router.currentRoute.value.query.redirect as string | undefined;
                     router.replace(redirect || { name: 'home' });
                 }

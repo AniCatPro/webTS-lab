@@ -21,7 +21,6 @@ export async function writeAudit(type: string, args: AuditArgs) {
             },
         });
     } catch (e) {
-        // не роняем основной поток из-за аудита
         console.warn('audit log failed:', e);
     }
 }

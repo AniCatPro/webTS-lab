@@ -17,15 +17,11 @@ cd "$ROOT_DIR"
 echo "==> Setting up SERVER dependencies"
 cd "$ROOT_DIR/server"
 
-# Чистим и ставим совместимые версии prisma/@prisma/client
 rm -rf node_modules package-lock.json || true
 npm i -D prisma@5.22.0
 npm i @prisma/client@5.22.0
-
-# Остальные зависимости
 npm i
 
-# .env по умолчанию
 if [ ! -f ".env" ]; then
   cat > .env <<EOF
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/filemanager?schema=public"
@@ -44,17 +40,18 @@ echo "==> Dev tools (tsx, typescript, @types/node)"
 npm i -D tsx typescript @types/node
 
 echo "==> Seeding database (if applicable)"
-# seed написан на tsx в package.json, но вызовем напрямую:
 npx tsx src/prisma/seed.ts || echo "(seed skipped or completed)"
 
 echo "==> Setting up CLIENT"
 cd "$ROOT_DIR/client"
-# .env для фронта
+
 if [ ! -f ".env" ]; then
   echo 'VITE_API_BASE=http://localhost:4000' > .env
   echo "==> Created client/.env"
 fi
+
 npm i
+npm i -D @types/node
 
 echo "==> Launching server & client concurrently"
 cd "$ROOT_DIR"

@@ -34,7 +34,6 @@
     </div>
   </div>
 
-  <!-- GRID VIEW -->
   <div v-if="viewMode==='grid'" class="columns is-multiline is-variable is-5" @dragover.prevent="onDesktopDragOver" @drop.prevent="onDesktopDrop">
     <div
         v-for="it in items"
@@ -55,7 +54,6 @@
     </div>
   </div>
 
-  <!-- LIST VIEW -->
   <div v-else class="table-container" @dragover.prevent="onDesktopDragOver" @drop.prevent="onDesktopDrop">
     <table class="table is-fullwidth is-hoverable is-striped">
       <thead>
@@ -103,7 +101,6 @@
     </table>
   </div>
 
-  <!-- Empty-folder dropzone -->
   <div
     v-if="items.length === 0"
     class="empty-drop"
@@ -119,7 +116,6 @@
     </div>
   </div>
 
-  <!-- Folder-wide overlay dropzone (visible during drag) -->
   <div
       v-if="overDesktop && !dragging"
     class="folder-drop-overlay"
@@ -134,7 +130,6 @@
     </div>
   </div>
 
-  <!-- Контекстное меню -->
   <div
       v-if="ctx.visible"
       class="fm-context"
@@ -145,7 +140,6 @@
     <button class="fm-context-item danger" @click="onDelete(ctx.target!)">Удалить</button>
   </div>
 
-  <!-- Модал перемещения -->
   <MoveDialog
       v-if="moveOpen"
       :current-parent-id="parentId ?? null"
@@ -153,14 +147,12 @@
       @confirm="doMove"
   />
 
-  <!-- Модал: создать папку -->
   <CreateFolderDialog
     v-if="showCreateFolder"
     @close="showCreateFolder=false"
     @confirm="doCreateFolder"
   />
 
-  <!-- Модал: подтверждение удаления -->
   <ConfirmDialog
     v-if="showDelete"
     title="Подтвердите удаление"
@@ -192,7 +184,6 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import CreateFolderDialog from '@/components/CreateFolderDialog.vue';
 import { useTransfers } from '@/stores/transfers';
 
-// Глобальные обработчики DnD, чтобы браузер не открывал файл при дропе
 const onWinDragOver = (e: DragEvent) => { e.preventDefault(); overDesktop.value = true; };
 const onWinDrop = (e: DragEvent) => { e.preventDefault(); overDesktop.value = false; };
 
@@ -209,12 +200,10 @@ const viewMode = ref<'grid'|'list'>('grid');
 onMounted(refresh);
 watch(() => route.fullPath, refresh);
 
-// Drag & Drop state and handlers
 const dragging = ref<FsEntry | null>(null);
 const dragOverId = ref<string | null>(null);
 const overDesktop = ref(false);
 
-// Modals
 const showCreateFolder = ref(false);
 const showDelete = ref(false);
 let deleteTarget: FsEntry | null = null;
@@ -240,7 +229,7 @@ function onRowDragEnd() {
 
 function onFolderDragOver(folder: FsEntry, e: DragEvent) {
   if (folder.kind !== 'folder') return;
-  if (dragging.value && dragging.value.id === folder.id) return; // prevent self
+  if (dragging.value && dragging.value.id === folder.id) return;
   dragOverId.value = folder.id;
   if (e.dataTransfer) e.dataTransfer.dropEffect = dragging.value ? 'move' : 'copy';
 }
@@ -250,7 +239,6 @@ function onFolderDragLeave(folder: FsEntry) {
 async function onFolderDrop(folder: FsEntry, e: DragEvent) {
   if (folder.kind !== 'folder') return;
 
-  // Move existing entry
   if (dragging.value) {
     if (dragging.value.id === folder.id) return;
     try {
@@ -265,7 +253,6 @@ async function onFolderDrop(folder: FsEntry, e: DragEvent) {
     return;
   }
 
-  // Upload dropped files from OS to this folder
   const droppedFiles = Array.from(e.dataTransfer?.files || []);
   if (droppedFiles.length) {
     try {
@@ -289,7 +276,6 @@ async function onFolderDrop(folder: FsEntry, e: DragEvent) {
   }
 }
 
-// Desktop drop to current folder
 function onDesktopDragOver(e: DragEvent) {
   if ((e.dataTransfer?.types || []).includes('Files')) {
     e.dataTransfer!.dropEffect = 'copy';
@@ -319,7 +305,6 @@ async function onDesktopDrop(e: DragEvent) {
   }
 }
 
-// контекстное меню
 const ctx = ref<{ visible: boolean; x: number; y: number; target: FsEntry | null }>({
   visible: false, x: 0, y: 0, target: null
 });
@@ -360,7 +345,6 @@ async function onPick(e: Event) {
   if (!fileList || fileList.length === 0) return;
 
   try {
-    // загружаем последовательно, чтобы прогресс был корректный для каждого
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       const id = transfers.start(file.name, file.size);
@@ -414,15 +398,12 @@ async function doDelete() {
   }
 }
 
-// перемещение через модал выбора папки
 const moveOpen = ref(false);
 let moveTarget: FsEntry | null = null;
 
 function onMove(it?: FsEntry) {
-  // берём цель либо из параметра, либо из контекст-меню
   const target = it ?? ctx.value.target;
   if (!target) return;
-  // сначала фиксируем цель, потом скрываем меню
   moveTarget = target;
   moveOpen.value = true;
   hideContextMenu();
@@ -441,7 +422,6 @@ async function doMove(destParentId: string | null) {
   }
 }
 
-// helpers
 function prettySize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
@@ -498,14 +478,14 @@ function prettyType(it: FsEntry) {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--surface);     /* раньше было #fafafa */
+  background: var(--surface);
   color: var(--text-muted);
   margin-top: 12px;
 }
 
 .empty-drop.is-over {
   border-color: var(--accent);
-  background: rgba(88,166,255,0.08); /* мягкая подсветка */
+  background: rgba(88,166,255,0.08);
 }
 
 .empty-drop .inner { text-align: center; padding: 24px; }
@@ -516,7 +496,7 @@ function prettyType(it: FsEntry) {
 .folder-drop-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60; /* выше контекстного меню */
+  z-index: 60;
   display: grid;
   place-items: center;
   background: rgba(0,0,0,0.15);
@@ -538,7 +518,6 @@ function prettyType(it: FsEntry) {
 .folder-drop-overlay .title { font-weight: 700; margin-bottom: 4px; }
 .folder-drop-overlay .hint { color: var(--text-muted); }
 
-/* Мягкая подсветка drop-цели в тёмной теме */
 html.theme-dark .is-drop-target {
   outline: 2px dashed var(--accent);
   outline-offset: 2px;

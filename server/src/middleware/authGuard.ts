@@ -1,11 +1,9 @@
-// server/src/middleware/authGuard.ts
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 
-// Расширяем тип (для TS, на рантайме не влияет)
 declare global {
     namespace Express {
         interface Request {
@@ -14,9 +12,6 @@ declare global {
     }
 }
 
-/**
- * Достаём JWT из cookie 'token' или из Authorization: Bearer xxx
- */
 function getToken(req: Request): string | null {
     const fromCookie = req.cookies?.token;
     if (fromCookie) return fromCookie as string;
@@ -28,9 +23,6 @@ function getToken(req: Request): string | null {
     return null;
 }
 
-/**
- * Обязательная авторизация: вешает req.user.
- */
 export async function authGuard(req: Request, res: Response, next: NextFunction) {
     try {
         const token = getToken(req);
@@ -46,7 +38,6 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
         const userId = payload?.sub as string | undefined;
         if (!userId) return res.status(401).json({ message: 'Invalid token payload' });
 
-        // Берём пользователя из БД, чтобы роль/почта были актуальны
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { id: true, email: true, role: true },
@@ -61,9 +52,6 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
     }
 }
 
-/**
- * Дополнительный гард по роли (например, для /api/admin/*)
- */
 export function requireRole(role: 'ADMIN' | 'USER') {
     return (req: Request, res: Response, next: NextFunction) => {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });

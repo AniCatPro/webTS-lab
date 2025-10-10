@@ -1,4 +1,3 @@
-// server/src/swagger.ts
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
 
@@ -14,18 +13,15 @@ export const swaggerSpec = swaggerJSDoc({
             description:
                 'REST API файлового менеджера. Авторизация для клиентских роутов — cookie (token), для админских — Bearer.',
         },
-        // ВАЖНО: без "/api" тут — т.к. пути в роутерах уже начинаются с /api/...
         servers: [{ url: SERVER_URL }],
         components: {
             securitySchemes: {
-                // JWT в cookie (клиентские маршруты)
                 cookieAuth: {
                     type: 'apiKey',
                     in: 'cookie',
                     name: 'token',
                     description: 'JWT-токен, который выставляется методом /api/auth/login',
                 },
-                // Bearer для админских эндпоинтов
                 bearerAuth: {
                     type: 'http',
                     scheme: 'bearer',
@@ -34,7 +30,6 @@ export const swaggerSpec = swaggerJSDoc({
                 },
             },
             schemas: {
-                // Базовые сущности (можно расширять по проекту)
                 UserPublic: {
                     type: 'object',
                     properties: {
@@ -107,10 +102,8 @@ export const swaggerSpec = swaggerJSDoc({
             { name: 'Files', description: 'Файлы и папки' },
             { name: 'Admin', description: 'Админ-панель (Bearer)' },
         ],
-        // По умолчанию НИЧЕГО не защищаем — безопасность укажем у конкретных роутов (cookieAuth или bearerAuth)
         security: [],
     },
-    // Включаем автоскан JSDoc-комментариев в ts-роутерах:
     apis: [
         'src/routes/*.ts',
         'src/routes/**/*.ts',

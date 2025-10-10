@@ -18,24 +18,14 @@ export const useFiles = defineStore('files', {
             try {
                 this.loading = true;
                 this.error = null;
-
-                // Запрашиваем список (сервер уже фильтрует, но мы страхуемся)
                 const res: Paginated<FsEntry> = await FilesApi.list({
                     page: this.page,
                     pageSize: this.pageSize,
                     ...params,
                 });
-
-                // Унифицируем входные данные
                 const incoming: FsEntry[] = (res.data ?? (res as any).items ?? res ?? []) as FsEntry[];
-
-                // Нормализуем искомый parentId (корень === null)
                 const wantedParent: string | null = params.parentId ?? null;
-
-                // Жёсткая фильтрация по parentId на клиенте — исключает «подсос» чужих элементов в корень
                 const filtered = incoming.filter((x) => ((x.parentId ?? null) === wantedParent));
-
-                // Убираем дубликаты по id (на всякий случай)
                 const uniq = new Map<string, FsEntry>();
                 for (const it of filtered) uniq.set(it.id, it);
 

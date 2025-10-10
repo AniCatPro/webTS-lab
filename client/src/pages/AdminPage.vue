@@ -20,7 +20,6 @@
         </ul>
       </div>
 
-      <!-- LOGS -->
       <div v-if="tab==='logs'" class="box">
         <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
           <div class="field has-addons">
@@ -94,7 +93,6 @@
         </nav>
       </div>
 
-      <!-- REVISIONS -->
       <div v-else class="box">
         <h2 class="subtitle">Последние текстовые правки</h2>
         <div v-if="error" class="notification is-danger is-light">{{ error }}</div>
@@ -122,7 +120,6 @@
       </div>
     </div>
 
-    <!-- Viewer -->
     <FileViewerWidget
         v-if="activeFile"
         :file="activeFile"
@@ -169,14 +166,12 @@ const error = ref<string | null>(null);
 const activeFile = ref<any | null>(null);
 const openingId = ref<string | null>(null);
 
-// Swagger URL
 const API_BASE = (import.meta.env.VITE_API_BASE ?? '/api').toString();
 const apiOrigin = /^https?:\/\//.test(API_BASE)
     ? new URL(API_BASE).origin
     : `${window.location.protocol}//${window.location.hostname}:4000`;
 const apiDocsUrl = computed(() => `${apiOrigin}/api/docs/#/`);
 
-// logs pagination/filter
 const page = ref(1);
 const pageSize = ref(50);
 const logsTotal = ref(0);
@@ -217,7 +212,6 @@ async function load() {
   else await loadRevisions();
 }
 
-// Открыть файл из строки лога (Вариант 1 — дотягиваем полный объект)
 async function openTarget(r: AuditRow) {
   const id = r.target?.id;
   if (!id) return;
@@ -232,9 +226,7 @@ async function openTarget(r: AuditRow) {
   }
 }
 
-function onSaved() {
-  // если был текстовый файл — можно рефрешнуть логи/правки по желанию
-}
+// function onSaved() {}
 
 function prettyDate(v?: string) {
   if (!v) return '—';

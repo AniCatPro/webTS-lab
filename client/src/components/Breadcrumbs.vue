@@ -24,17 +24,13 @@ const props = defineProps<{ folder: FsEntry | null }>();
 type FolderOnly = FsEntry & { kind: 'folder' };
 
 const trail = ref<FolderOnly[]>([]);
-
-// Строим цепочку родителей до корня
 async function buildTrail(folder: FsEntry | null) {
   const chain: FolderOnly[] = [];
   let cur: FsEntry | null = folder;
   while (cur && cur.parentId !== null && cur.kind === 'folder') {
     chain.unshift(cur as FolderOnly); // добавляем в начало
-    // грузим родителя
     cur = cur.parentId ? await FilesApi.get(cur.parentId) : null;
   }
-  // если текущая папка — не root (parentId!==null), но цепочка пуста — добавим её
   if (folder && folder.kind === 'folder' && !chain.find(x => x.id === folder.id)) {
     chain.push(folder as FolderOnly);
   }

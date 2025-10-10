@@ -38,7 +38,6 @@
         </div>
 
         <div class="navbar-end">
-          <!-- Переключатель темы (иконки) -->
           <div class="navbar-item">
             <div class="theme-toggle-icons" role="group" aria-label="Theme switch">
               <button
@@ -101,10 +100,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuth } from '@/stores/auth';
 import UploadToasts from '@/components/UploadToasts.vue';
 import { useTheme } from '@/stores/theme';
-
-// ЛОГО: положи файлы сюда:
-// client/src/assets/logo.png (дневной)
-// client/src/assets/logo-night.png (ночной)
 import logoLight from '@/assets/logo.png';
 import logoDark from '@/assets/logo-night.png';
 import avatarSrc from '@/assets/avatar.jpeg';
@@ -129,7 +124,6 @@ async function logout() { await auth.logout(); }
 <style>
 html, body, #app { height: 100%; }
 
-/* ------------------ Палитра (светлая) ------------------ */
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
@@ -138,10 +132,9 @@ html, body, #app { height: 100%; }
   --text-muted: #6e7781;
   --border: #d0d7de;
   --link: #0969da;
-  --accent: #409eff; /* основной акцент */
+  --accent: #409eff;
 }
 
-/* ------------------ Палитра (тёмная, мягкая) ------------------ */
 html.theme-dark {
   --bg: #0d1117;
   --surface: #161b22;
@@ -160,11 +153,9 @@ body {
   color: var(--text);
 }
 
-/* ---------- NAVBAR ---------- */
 .navbar.is-dark { background: #161b22; }
 .navbar.is-light { background: #f6f8fa; }
 
-/* Navbar menu panel + items (Bulma overrides) */
 .navbar-menu {
   background: var(--surface) !important;
   border-bottom: 1px solid var(--border);
@@ -182,14 +173,14 @@ html.theme-dark .navbar-menu {
   background: var(--surface-2) !important;
   color: var(--text) !important;
 }
-/* burger icon color */
+
 .navbar-burger {
   color: var(--text) !important;
 }
 .navbar-burger span {
   background-color: var(--text) !important;
 }
-/* dropdown (desktop) */
+
 .navbar-dropdown {
   background: var(--surface) !important;
   border-color: var(--border) !important;
@@ -198,17 +189,15 @@ html.theme-dark .navbar-menu {
   background: var(--surface-2) !important;
 }
 
-/* логотип */
+
 .logo { width: 28px; height: 28px; }
 
-/* ---------- Общие контейнеры ---------- */
 .box, .card, .modal-card, .dropdown-content, .menu, .message, .hero {
   background: var(--surface);
   color: var(--text);
   border-color: var(--border);
 }
 
-/* ---------- Таблицы ---------- */
 .table {
   background: var(--surface);
   color: var(--text);
@@ -222,7 +211,6 @@ html.theme-dark .navbar-menu {
 .table td, .table th { border-color: var(--border) !important; }
 .table.is-striped tbody tr:not(.is-selected):nth-child(even) { background: var(--surface-2); }
 
-/* ---------- Формы ---------- */
 .input, .textarea, .select select {
   background: var(--surface-2);
   color: var(--text);
@@ -231,7 +219,6 @@ html.theme-dark .navbar-menu {
 .input::placeholder, .textarea::placeholder { color: var(--text-muted); }
 .select:not(.is-multiple):not(.is-loading)::after { border-color: var(--text); }
 
-/* ---------- Кнопки ---------- */
 .button.is-link {
   background: var(--accent);
   border-color: var(--accent);
@@ -244,10 +231,8 @@ html.theme-dark .button.is-light {
 }
 html.theme-dark .button.is-light:hover { background: #262c34; }
 
-/* ---------- Ссылки ---------- */
 a { color: var(--link); }
 
-/* ---------- Наши дропзоны/оверлеи ---------- */
 .empty-drop {
   background: var(--surface-2);
   border-color: var(--border);
@@ -264,9 +249,8 @@ a { color: var(--link); }
   color: var(--text);
 }
 
-/* === Контекстное меню: тёмный/светлый фон и читаемые кнопки === */
 .fm-context {
-  background: var(--surface) !important; /* обязательно переопределяем Bulma */
+  background: var(--surface) !important;
   color: var(--text) !important;
   border: 1px solid var(--border) !important;
   border-radius: 10px;
@@ -274,30 +258,25 @@ a { color: var(--link); }
   z-index: 1000;
 }
 
-/* Если используешь контейнер с действиями */
 .fm-context .ctx-actions { display: flex; gap: .5rem; }
 
-/* БАЗА для всех кнопок в меню (кроме спец-цветов) */
 .fm-context .button:not(.is-link):not(.is-danger):not(.is-dark) {
   background: var(--surface-2) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
 
-/* На всякий случай гасим "is-white", если он где-то стоит в разметке */
 .fm-context .button.is-white {
   background: var(--surface-2) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
 
-/* Hover для базовых кнопок */
 .fm-context .button:not(.is-link):not(.is-danger):not(.is-dark):hover {
   background: var(--surface) !important;
   filter: brightness(0.98);
 }
 
-/* Ссылочная/акцентная */
 .fm-context .button.is-link {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
@@ -305,7 +284,6 @@ a { color: var(--link); }
 }
 .fm-context .button.is-link:hover { filter: brightness(0.95); }
 
-/* Опасная (Удалить) */
 .fm-context .button.is-danger {
   background: #dc3545 !important;
   border-color: #dc3545 !important;
@@ -314,7 +292,6 @@ a { color: var(--link); }
 
 .fm-context .button.is-danger:hover { filter: brightness(0.95); }
 
-/* В тёмной теме перекрашиваем кнопки контекстного меню */
 html.theme-dark .fm-context .button {
   background: #2d333b !important;
   border-color: var(--border) !important;
@@ -325,25 +302,21 @@ html.theme-dark .fm-context .button:hover {
   background: #262c34 !important;
 }
 
-/* Элементы-строки (если есть не-кнопочные пункты) */
 .fm-context-item { color: var(--text) !important; }
 .fm-context-item:hover { background: var(--surface-2) !important; }
 
-/* Фокус */
 .fm-context .button:focus-visible,
 .fm-context-item:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ---------- Карточки файлов ---------- */
 .drive-card {
   background: var(--surface);
   border: 1px solid var(--border);
 }
 .thumb { background: var(--surface-2); }
 
-/* вспомогат. */
 .table-container { background: transparent; }
 .is-drop-target {
   outline: 2px dashed var(--accent);
@@ -352,7 +325,6 @@ html.theme-dark .fm-context .button:hover {
 
 .text-muted { color: var(--text-muted); }
 
-/* ---------- Заголовки ---------- */
 html.theme-dark .title {
   color: var(--text);
 }
@@ -360,7 +332,6 @@ html.theme-dark .subtitle {
   color: var(--text-muted);
 }
 
-/* Theme toggle (icon variant) */
 .theme-toggle-icons {
   display: inline-flex;
   align-items: center;
@@ -399,10 +370,8 @@ html.theme-dark .theme-toggle-icons .tt-btn:hover {
   box-shadow: 0 1px 2px rgba(0,0,0,.08) inset;
 }
 
-/* чуть уменьшить отступы справа в navbar */
 .navbar-end .navbar-item .theme-toggle-icons { margin-right: .25rem; }
 
-/* ===== Модалки: мягкие тёмные фоны/бордеры/текст ===== */
 .modal-card,
 .modal-card-head,
 .modal-card-body,
@@ -418,7 +387,6 @@ html.theme-dark .theme-toggle-icons .tt-btn:hover {
 }
 .modal-card-foot { border-top: 1px solid var(--border); }
 
-/* Заголовок и крестик */
 .modal-card-title { color: var(--text); }
 .modal .delete {
   background: transparent;
@@ -429,12 +397,10 @@ html.theme-dark .theme-toggle-icons .tt-btn:hover {
   border-color: var(--border);
 }
 
-/* Фон под модалкой — темнее в night */
 html.theme-dark .modal-background {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
-/* Элементы форм внутри модалок */
 .modal-card .input,
 .modal-card .textarea,
 .modal-card .select select {
@@ -447,13 +413,11 @@ html.theme-dark .modal-background {
   color: var(--text-muted);
 }
 
-/* Радио/чекбоксы читаемее в тёмной теме */
 html.theme-dark input[type="radio"],
 html.theme-dark input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
-/* Меню/крошки в MoveDialog */
 .modal-card .menu,
 .modal-card .menu-list,
 .modal-card .breadcrumb,
@@ -466,7 +430,6 @@ html.theme-dark input[type="checkbox"] {
   background: var(--surface-2);
 }
 
-/* Кнопки в модалках — мягкие */
 html.theme-dark .modal-card .button.is-light {
   background: #2d333b;
   border-color: var(--border);
@@ -476,20 +439,18 @@ html.theme-dark .modal-card .button.is-light:hover {
   background: #262c34;
 }
 
-/* DnD: общий оверлей чуть темнее в night */
 html.theme-dark .folder-drop-overlay {
   background: rgba(0, 0, 0, 0.45);
 }
 
-/* === Layout & Footer === */
 .layout {
-  min-height: 100dvh; /* поддержка мобильных браузеров */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
 .page-body {
-  flex: 1 0 auto; /* контент растягивается */
+  flex: 1 0 auto;
 }
 
 .site-footer {
@@ -519,6 +480,6 @@ html.theme-dark .folder-drop-overlay {
   object-fit: cover;
   vertical-align: middle;
   margin-right: 8px;
-  display: inline-block; /* ensure sizing applies */
+  display: inline-block;
 }
 </style>

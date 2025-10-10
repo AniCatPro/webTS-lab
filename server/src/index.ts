@@ -11,8 +11,6 @@ import { swaggerUi, swaggerSpec } from './swagger.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
-
-// список origins из .env, можно через запятую
 const rawOrigins = (process.env.CLIENT_ORIGIN || '')
     .split(',')
     .map(s => s.trim())
@@ -23,18 +21,11 @@ const allowLocalhost = [
     /^http:\/\/127\.0\.0\.1(?::\d+)?$/,
 ];
 
-// Swagger UI
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// JSON спецификация
 app.get('/api/anicatpro.json', (_req, res) => res.json(swaggerSpec));
-
-// CORS middleware
 app.use(cors({
     origin(origin, cb) {
-        // запросы без Origin (например, curl) — разрешаем
         if (!origin) return cb(null, true);
-
         if (rawOrigins.includes(origin)) return cb(null, true);
         if (allowLocalhost.some(re => re.test(origin))) return cb(null, true);
 
@@ -46,7 +37,6 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
-// (опционально) публичная статика — можно оставить для удобства
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/static', express.static(path.join(__dirname, '..', 'static')));

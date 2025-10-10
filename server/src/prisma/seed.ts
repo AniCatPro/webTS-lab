@@ -16,7 +16,6 @@ const PORT = Number(process.env.PORT || 4000);
 const API_STATIC_BASE = `http://localhost:${PORT}/static`;
 
 function urlFor(relPathFromStatic: string) {
-    // Encode each path segment to keep Cyrillic/space-safe URLs
     const encoded = relPathFromStatic
         .split(path.sep)
         .join('/')
@@ -87,12 +86,8 @@ async function importSeedDir(absDir: string, ownerId: string, actorId: string, p
     const st = fs.statSync(abs);
     const mimeType = (mime.lookup(ent.name) || 'application/octet-stream').toString();
     const type = toFileType(mimeType);
-
-    // Rel path from STATIC for URL building
     const relFromStatic = path.relative(STATIC_DIR, abs); // e.g. 'seed/a/b/c.png'
     const url = urlFor(relFromStatic);
-
-    // unique within (ownerId, parentId, name, kind)
     const existed = await prisma.file.findFirst({
       where: { ownerId, parentId, name: ent.name, kind: 'file' },
     });
@@ -134,13 +129,9 @@ async function ensureSeedFilesForOwner(ownerId: string, actorId: string) {
 }
 
 async function main() {
-    // 1) Users
     const admin = await ensureUser('admin@example.com', 'ADMIN', 'admin123');
     const user  = await ensureUser('user@example.com',  'USER',  'user123');
-
-    // 2) Only regular USER gets initial files from /static/seed
     await ensureSeedFilesForOwner(user.id, user.id);
-
     console.log('Seed complete:');
     console.log('Admin:', 'admin@example.com / admin123');
     console.log('User :', 'user@example.com / user123');

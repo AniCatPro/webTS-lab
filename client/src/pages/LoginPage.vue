@@ -49,8 +49,6 @@ async function onSubmit() {
     await auth.login(email.value.trim(), password.value);
     const redirect = (route.query.redirect as string) || '/#/admin';
     router.push(redirect);
-  } catch {
-    // ошибка уже установлена в store
-  }
+  } catch {}
 }
 </script>

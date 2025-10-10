@@ -78,8 +78,6 @@ adminRouter.get('/revisions', async (_req, res) => {
     res.json(list);
 });
 
-// НОВОЕ: аудит-лог
-// GET /api/admin/logs?types=file.create,file.delete&page=1&pageSize=50
 adminRouter.get('/logs', async (req, res) => {
   const { types, page = '1', pageSize = '50' } = req.query as Record<string, string>;
   const typeList = (types ? String(types).split(',') : []).filter(Boolean);
